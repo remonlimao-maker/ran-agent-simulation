@@ -2,8 +2,9 @@
   "name": "ran-station-agent-runtime",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
-  "description": "Lightweight Pi Agent CU/DU control-loop prototype with a deterministic safety core",
+  "description": "Lightweight Pi Agent RAN control-loop prototype with a deterministic safety core",
   "scripts": {
     "demo": "node src/demo.ts",
     "demo:pi": "node src/demo-pi.ts",
