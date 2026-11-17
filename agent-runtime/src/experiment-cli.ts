@@ -30,7 +30,7 @@ const config: ExperimentConfig = {
   ackDelayMs: numberArg(args, "ack-delay-ms", 30),
   maxInferenceMs: numberArg(args, "max-inference-ms", 450),
   outputDir: resolve(stringArg(args, "out-dir", "results")),
-  modelId: stringArg(args, "model-id", process.env.RAN_MODEL_ID ?? "Qwen/Qwen3.5-0.8B"),
+  modelId: stringArg(args, "model-id", process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B"),
   baseUrl: stringArg(args, "base-url", process.env.RAN_MODEL_BASE_URL ?? "http://127.0.0.1:8000/v1"),
   apiKey: stringArg(args, "api-key", process.env.RAN_MODEL_API_KEY),
 };

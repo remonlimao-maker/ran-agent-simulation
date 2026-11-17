@@ -3,7 +3,7 @@ import { PiStationAgentAdapter } from "./pi-adapter.ts";
 import { createLocalPiRunner } from "./pi-local.ts";
 import { StationAgentRuntime } from "./runtime.ts";
 
-const modelId = process.env.RAN_MODEL_ID ?? "Qwen/Qwen3.5-0.8B";
+const modelId = process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
 const runner = createLocalPiRunner({
   onEvent: (event) => process.stdout.write(`${JSON.stringify({ stream: "pi-agent", ...event })}\n`),
 });

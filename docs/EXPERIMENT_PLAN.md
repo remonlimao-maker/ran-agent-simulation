@@ -22,7 +22,7 @@ Intent received
  -> telemetry snapshot
  -> one Pi Agent model turn
  -> deterministic guardrail
- -> CU/DU Function dispatch
+ -> Station Function dispatch
  -> Function ACK
 
 T_effect:
@@ -37,7 +37,7 @@ ACK
 
 | 因子 | 首轮取值 |
 |---|---|
-| 决策器 | Rules；Pi + 0.8B |
+| 决策器 | Rules；Pi faux；Pi + Qwen3-0.6B（约 0.8B 总权重） |
 | SLA | 250、500、1,000、3,000 ms |
 | 精度 | INT4、INT8 |
 | 模型状态 | warm、cold |
@@ -63,6 +63,10 @@ ACK
 - 记录启动时间、模型常驻 RSS/VRAM、TTFT、完整 tool call 时延、输入/输出 token、功耗。
 - warm 与 cold 必须分开；线上 1 秒目标以 warm 为主，cold 作为恢复能力指标。
 
+普通托管 API 只适合先验证正确性、token 和端到端时延。芯片选型实验必须使用可读取服务端遥测的受控端点；否则 TOPS、RSS/VRAM、内存带宽与功耗一律记为 `N/A`，不得用 Agent 客户端指标替代。
+
+首轮容量估算固定记录：总参数、量化位宽、原始权重、KV Cache、上下文/输出 token、推理预算、计算下界和权重带宽下界。估算只用于筛选候选芯片，最终结论来自同一模型文件、同一推理后端和目标硬件上的 P95/P99 实测。
+
 ### C. 工具正确性
 
 - Tool exact match。
@@ -73,7 +77,7 @@ ACK
 
 ### D. 闭环仿真
 
-- 接入 CU/DU simulator，再逐步接入 srsRAN 或数字孪生。
+- 接入平台中性的 Station Function simulator，再逐步接入真实实现或数字孪生。
 - 记录 ACK 后 KPI 是否达到目标、是否违反约束、回滚时间与二次损害。
 - 故障注入包括：遥测中断、重复意图、ACK 丢失、配置版本漂移、Agent 重启和模型超时。
 

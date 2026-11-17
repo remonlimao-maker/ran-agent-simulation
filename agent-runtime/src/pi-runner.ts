@@ -15,6 +15,14 @@ export interface PiAuditEvent {
   toolName?: string;
   durationMs?: number;
   isError?: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  totalTokens?: number;
+  modelDurationMs?: number;
+  messageRole?: string;
+  toolArguments?: Record<string, unknown>;
 }
 
 export interface PiAgentOneShotRunnerOptions {
@@ -26,7 +34,7 @@ export interface PiAgentOneShotRunnerOptions {
 /**
  * Current Pi Agent Core bridge.
  *
- * Pi tools only record a proposal. They never call a CU/DU function; the
+ * Pi tools only record a proposal. They never call a station function; the
  * deterministic StationAgentRuntime validates and dispatches the proposal.
  */
 export class PiAgentOneShotRunner implements PiOneShotRunner {
@@ -175,6 +183,16 @@ function toAuditEvent(event: AgentEvent, startedAtMs: number): PiAuditEvent {
     elapsedMs: Math.round((performance.now() - startedAtMs) * 100) / 100,
   };
   if ("toolName" in event) audit.toolName = event.toolName;
+  if (event.type === "message_start" || event.type === "message_end") audit.messageRole = event.message.role;
+  if (event.type === "tool_execution_start") audit.toolArguments = structuredClone(event.args as Record<string, unknown>);
+  if (event.type === "message_end" && event.message.role === "assistant") {
+    audit.inputTokens = event.message.usage.input;
+    audit.outputTokens = event.message.usage.output;
+    audit.cacheReadTokens = event.message.usage.cacheRead;
+    audit.cacheWriteTokens = event.message.usage.cacheWrite;
+    audit.totalTokens = event.message.usage.totalTokens;
+    audit.modelDurationMs = event.message.durationMs;
+  }
   if (event.type === "tool_execution_end") {
     audit.durationMs = event.durationMs;
     audit.isError = event.isError;

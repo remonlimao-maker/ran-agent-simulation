@@ -219,7 +219,7 @@ function createAgent(config: ExperimentConfig, syntheticDelayMs: number): Statio
       modelId: config.modelId,
       apiKey: config.apiKey,
     });
-    return new PiStationAgentAdapter(runner, config.modelId ?? process.env.RAN_MODEL_ID ?? "Qwen/Qwen3.5-0.8B");
+    return new PiStationAgentAdapter(runner, config.modelId ?? process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B");
   }
 
   const faux = fauxProvider();
@@ -237,7 +237,7 @@ function createAgent(config: ExperimentConfig, syntheticDelayMs: number): Statio
     model: faux.getModel(),
     streamFn: models.streamSimple.bind(models),
   });
-  return new PiStationAgentAdapter(new DelayedPiRunner(piRunner, syntheticDelayMs), "synthetic-0.8B-faux");
+  return new PiStationAgentAdapter(new DelayedPiRunner(piRunner, syntheticDelayMs), "Pi faux provider / no model inference");
 }
 
 class DelayedPiRunner implements PiOneShotRunner {
@@ -309,7 +309,7 @@ function validateConfig(config: ExperimentConfig): void {
 function provenanceCaveats(mode: ExperimentMode): string[] {
   if (mode === "pi-faux") {
     return [
-      "Pi Agent Core, event handling, tool validation, and deterministic CU/DU execution are real code paths.",
+      "Pi Agent Core, event handling, tool validation, and deterministic station-function execution are real code paths.",
       "Model latency is an injected delay before Pi's deterministic faux-provider response; it is not 0.8B inference.",
       "Client RSS excludes any external model server, accelerator memory, and device power.",
     ];

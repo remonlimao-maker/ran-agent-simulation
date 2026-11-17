@@ -51,7 +51,7 @@
           "scenario": "Cell energy optimization",
           "slaProfile": "Near-RT · 1000 ms",
           "slaMs": 1000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": true,
           "startup": "Warm",
@@ -74,7 +74,7 @@
           "scenario": "Cell energy optimization",
           "slaProfile": "Fast · 500 ms",
           "slaMs": 500,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": true,
           "startup": "Warm",
@@ -97,7 +97,7 @@
           "scenario": "PRB quota adjustment",
           "slaProfile": "Near-RT · 1000 ms",
           "slaMs": 1000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT8",
           "warm": true,
           "startup": "Warm",
@@ -120,7 +120,7 @@
           "scenario": "Mobility profile change",
           "slaProfile": "Near-RT · 1000 ms",
           "slaMs": 1000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": true,
           "startup": "Warm",
@@ -143,7 +143,7 @@
           "scenario": "Cell energy optimization",
           "slaProfile": "Relaxed · 3000 ms",
           "slaMs": 3000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": false,
           "startup": "Cold",
@@ -189,7 +189,7 @@
           "scenario": "Conflicting intent",
           "slaProfile": "Near-RT · 1000 ms",
           "slaMs": 1000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": true,
           "startup": "Warm",
@@ -212,7 +212,7 @@
           "scenario": "Stale telemetry",
           "slaProfile": "Near-RT · 1000 ms",
           "slaMs": 1000,
-          "model": "Qwen3.5-0.8B",
+          "model": "Qwen3-0.6B (~0.8B total)",
           "precision": "INT4",
           "warm": true,
           "startup": "Warm",
@@ -249,7 +249,7 @@
         "metricDefinitions": [
           {
             "label": "Control-path latency",
-            "definition": "Elapsed time from receipt of a validated structured intent to CU/DU Function ACK or safe terminal rejection.",
+            "definition": "Elapsed time from receipt of a validated structured intent to Station Function ACK or safe terminal rejection.",
             "componentIds": [
               "control-latency",
               "task-run-table"
@@ -302,7 +302,7 @@
           "taskId": "task-042",
           "stageOrder": 3,
           "stage": "Telemetry snapshot",
-          "component": "CU/DU adapter",
+          "component": "Station Function adapter",
           "startMs": 60,
           "durationMs": 80,
           "endMs": 140,
@@ -334,7 +334,7 @@
         {
           "taskId": "task-042",
           "stageOrder": 6,
-          "stage": "DU Function dispatch",
+          "stage": "Station Function dispatch",
           "component": "DU-01 executor",
           "startMs": 624,
           "durationMs": 120,
@@ -429,7 +429,7 @@
         }
       ],
       "source": {
-        "label": "Synthetic CU/DU topology snapshot",
+        "label": "Synthetic station topology snapshot",
         "caveats": [
           "Fictional topology for interface and interaction testing."
         ],
@@ -598,7 +598,7 @@
         "metricDefinitions": [
           {
             "label": "Audit event",
-            "definition": "Structured state transition or CU/DU Function outcome emitted by the simulated control path.",
+            "definition": "Structured state transition or Station Function outcome emitted by the simulated control path.",
             "componentIds": [
               "audit-events"
             ]

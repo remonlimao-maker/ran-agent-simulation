@@ -29,7 +29,7 @@
 |---|---|---|
 | 网管 Intent Agent | 将自然语言目标转换为结构化 Intent IR，并输出可审计解析阶段 | 确定性演示解析器已实现；真实大模型路径待接入 |
 | Agent Runtime | 管理任务生命周期、总时限、取消、事件和结果 | 已实现 |
-| Rules / Pi Agent | 在相同输入和工具约束下生成 Action Proposal | 规则、Pi faux 和本地模型连接路径已实现 |
+| Rules / Pi Agent | 在相同输入和工具约束下生成 Action Proposal | 规则、Pi faux、远端 API 和本地模型路径已实现 |
 | Deterministic Guardrail | 校验 Intent、状态、动作、参数、范围、版本与预算 | 已实现 |
 | Function Adapter | 将已验证动作映射为受限网络 Function | 模拟器已实现，真实适配器待接入 |
 | Experiment & Observability | 运行条件矩阵，记录阶段时延并显示事件过程 | 已实现 |
@@ -87,6 +87,7 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 | AI 价值的规则门槛 | Rules、Pi faux、Pi + 0.8B 使用相同场景与指标 | 只有模型显著提高 Safe Task Completion 时才值得引入 | 实验框架已实现；真实模型待测 |
 | ACK 与网络效果双时间轴 | T_ack 与 T_effect 分离，KPI 观察和回滚独立建模 | 同时评价控制实时性与业务效果，避免指标混淆 | 架构已定义；真实闭环待验证 |
 | 可替换的执行适配层 | Intent/Action/Event 契约不依赖具体后端 | 同一安全运行时可连接模拟器、数字孪生或其他执行环境 | 模拟器已实现 |
+| 测量与估算分离 | Agent 进程实测、API 可见指标与芯片容量公式分别标注 | 避免把 faux 或客户端 RSS 误写成 0.8B 模型资源 | 已实现并有测试 |
 
 ## 0.8B 与算力实验
 
@@ -103,6 +104,8 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 | 故障条件 | 过期、冲突、陈旧遥测、越权、多工具、版本冲突、ACK 丢失、模型超时 | 正确拒绝、SAFE_NOOP、False Actuation、回滚 |
 
 `Pi faux` 不包含任何 0.8B 模型权重或真实推理：它只运行真实 Pi Agent 协议与工具循环，并用预设响应/可控延迟验证框架开销和失败语义。真实 0.8B 结果必须使用 `Pi + 0.8B` 条件单独测量。
+
+首个官方参考模型改为 `Qwen/Qwen3-0.6B`：型号名约 0.6B，公开仓库元数据显示约 0.8B 总权重，属于本项目目标量级。模型可以通过 OpenAI-compatible 远端 API 调用；普通托管 API 只能提供端到端时延和 token 等客户端可见指标，不能提供服务端 TOPS、RAM/VRAM、内存带宽或功耗。
 
 首轮探索性 Go/No-Go 门槛：
 
@@ -123,6 +126,10 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 - 推理与执行 deadline、取消和迟到结果丢弃。
 - Intent 时效、重放、状态约束、动作范围和参数校验。
 - 规则基线、Pi faux、外部本地模型连接路径和 JSON/CSV 实验结果。
+- OpenAI-compatible 远端模型 API 模式；API key 仅保留在服务端环境变量。
+- 推理期间 Agent CPU/RSS/Heap、token 使用和测量来源标记。
+- 约 0.8B INT4 的 TOPS、RAM、双槽存储与内存带宽可审计容量估算。
+- Pi Agent 请求摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail、Function dispatch 与 ACK 的完整调用轨迹；faux 与真实 API 明确区分。
 - 自然语言解析的 8 阶段可审计轨迹、完整 Intent IR JSON 和独立解析耗时。
 - 有序 Runtime/Pi 事件、SSE 实时控制台与观察器故障隔离。
 
@@ -144,7 +151,14 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
     npm test
     npm run live
 
-打开 http://127.0.0.1:4175，输入中文或英文自然语言任务后，可依次查看 8 个双语意图解析阶段、完整 Intent IR、Agent 事件、工具调用和 1 秒 SLA 过程。
+打开 http://127.0.0.1:4175，输入中文或英文任务后，可查看意图解析、Intent IR、工具调用、1 秒 SLA、实时 Agent 资源和芯片容量估算。演示节奏可选择实时、快速、标准或慢速，展示延时不计入控制 SLA。
+
+不在本机运行模型时，可配置任意 OpenAI-compatible 远端端点后，在界面选择 `Remote model API`：
+
+    RAN_MODEL_BASE_URL=https://router.huggingface.co/v1 \
+    RAN_MODEL_ID=Qwen/Qwen3-0.6B \
+    RAN_MODEL_API_KEY=hf_xxx \
+    npm run live
 
 启动实验仪表盘：
 

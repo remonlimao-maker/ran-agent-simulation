@@ -22,24 +22,34 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /结构化 Intent IR/);
   assert.match(page, /naturalLanguage/);
   assert.match(page, /无模型 \/ no model/);
+  assert.match(page, /远端模型 API \/ Remote API/);
+  assert.match(page, /运行资源实测 \/ Live resources/);
+  assert.match(page, /芯片容量规划 \/ Capacity estimate/);
+  assert.match(page, /演示节奏 \/ Demo pace/);
+  assert.match(page, /Pi Agent 执行与调用过程 \/ Execution trace/);
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
   assert.doesNotMatch(page, /https?:\/\//, "the live UI must not depend on remote assets");
 });
 
-test("accepts only the two local simulator modes and three bounded scenarios", () => {
+test("accepts rules, faux, and remote API modes with three bounded scenarios", () => {
   assert.deepEqual(parseRunRequest({ mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }), {
     ok: true,
-    value: { mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE },
+    value: { mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
   });
   assert.deepEqual(parseRunRequest({ mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE }), {
     ok: true,
-    value: { mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE },
+    value: { mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
+  });
+  assert.deepEqual(parseRunRequest({ mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }), {
+    ok: true,
+    value: { mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
   });
   assert.equal(parseRunRequest({ mode: "shell", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }).ok, false);
   assert.equal(parseRunRequest({ mode: "rules", scenario: "live-ran", naturalLanguage: NATURAL_LANGUAGE }).ok, false);
   assert.equal(parseRunRequest({ mode: "rules", scenario: "success", naturalLanguage: "" }).ok, false);
+  assert.equal(parseRunRequest({ mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 1_001 }).ok, false);
   assert.equal(parseRunRequest(null).ok, false);
 });
 
@@ -61,7 +71,7 @@ test("runs the real Pi-faux loop and emits both Pi and runtime audit events", as
   const messages: any[] = [];
   const result = await runSyntheticTask(
     "test-live-pi",
-    { mode: "pi-faux", scenario: "success", naturalLanguage: NATURAL_LANGUAGE },
+    { mode: "pi-faux", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 0 },
     (message) => messages.push(message),
     { parseStageDelayMs: 0 },
   );
@@ -73,6 +83,19 @@ test("runs the real Pi-faux loop and emits both Pi and runtime audit events", as
     && message.intentIr.schemaVersion === "0.1"
     && typeof message.parseElapsedMs === "number"
     && typeof message.traceElapsedMs === "number"), true);
+  assert.equal(messages.some((message) => message.kind === "resource_sample"), true);
+  assert.equal(messages.some((message) => message.kind === "resource_summary"
+    && message.summary.measurementScope === "agent_client_process"
+    && message.summary.modelServerMetrics === "not_applicable"), true);
   assert.equal(messages.some((message) => message.stream === "pi-agent" && message.event.type === "agent_start"), true);
+  assert.equal(messages.some((message) => message.stream === "pi-agent"
+    && message.event.type === "tool_execution_start"
+    && message.event.toolArguments.mode === "LOW_POWER"), true);
+  assert.equal(messages.some((message) => message.stream === "runtime"
+    && message.event.type === "MODEL_STARTED"
+    && message.event.detail.request.tools[0].name === "set_energy_saving_mode"), true);
+  assert.equal(messages.some((message) => message.stream === "runtime"
+    && message.event.type === "MODEL_COMPLETED"
+    && message.event.detail.proposal.parameters.mode === "LOW_POWER"), true);
   assert.equal(messages.some((message) => message.stream === "runtime" && message.event.type === "ACTION_ACK"), true);
 });

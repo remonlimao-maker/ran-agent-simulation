@@ -59,6 +59,18 @@ export class StationAgentRuntime {
       journal.append("MODEL_STARTED", "cu-agent", {
         budgetMs: roundMs(inferenceBudgetMs),
         candidateTools: intent.allowedActions,
+        model: this.#agent.model ?? null,
+        request: {
+          objective: intent.objective,
+          constraints: intent.constraints,
+          cells: snapshots.map((snapshot) => ({
+            cellId: snapshot.cellId,
+            configVersion: snapshot.configVersion,
+            energySavingMode: snapshot.energySavingMode,
+            metrics: snapshot.metrics,
+          })),
+          tools: STATION_TOOLS.filter((tool) => intent.allowedActions.includes(tool.name)),
+        },
       });
       const proposal = await raceWithTimeout(
         this.#agent.decide(
@@ -82,18 +94,23 @@ export class StationAgentRuntime {
         throw error;
       }
       if (performance.now() >= deadlineAtMs) throw new DeadlineError("control", "control deadline expired after inference");
-      journal.append("MODEL_COMPLETED", "cu-agent", { actionName: proposal.actionName });
+      journal.append("MODEL_COMPLETED", "cu-agent", { proposal });
 
       const action = validateAction(intent, proposal);
       journal.append("PLAN_VALIDATED", "guardrail", {
         actionName: action.actionName,
         target: action.target,
+        parameters: action.parameters,
+        expectedConfigVersion: action.expectedConfigVersion,
       });
 
       const executionBudgetMs = remainingMs(deadlineAtMs);
       if (executionBudgetMs <= 0) throw new DeadlineError("control", "no budget remains for tool execution");
       journal.append("TOOL_DISPATCHED", "du-executor", {
         actionName: action.actionName,
+        target: action.target,
+        parameters: action.parameters,
+        expectedConfigVersion: action.expectedConfigVersion,
         remainingBudgetMs: roundMs(executionBudgetMs),
         dryRun: intent.execution.dryRun ?? false,
       });

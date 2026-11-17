@@ -289,7 +289,7 @@ export function DashboardContent() {
     <Filters sticky filters={dashboard.filters ?? []} queries={queries} values={filters} onChange={setFilter} />
 
     <ExecutiveSummary preview={summary} className="ran-executive-summary">
-      <RichNarrative id="ran-summary" value={`**${summary}** Correct rejection counts as safe completion; late model output is discarded and cannot actuate. Control completion measures Intent IR receipt through CU/DU Function ACK. KPI effect verification runs on a separate, longer clock.`} />
+      <RichNarrative id="ran-summary" value={`**${summary}** Correct rejection counts as safe completion; late model output is discarded and cannot actuate. Control completion measures Intent IR receipt through Station Function ACK. KPI effect verification runs on a separate, longer clock.`} />
     </ExecutiveSummary>
 
     <ReplayControls replayMs={replayMs} setReplayMs={setReplayMs} playing={playing} setPlaying={setPlaying} />
@@ -334,7 +334,7 @@ export function DashboardContent() {
 
       {visible("cudu-topology") && <SortableItem id="cudu-topology" label="CU and DU topology" kind="custom" className="topology-slot">
         <DataComponent id="cudu-topology" queryId="cells" kind="custom" variant="card" padding="spacious"
-          title="CU / DU execution topology" description="The 0.8B model stays in a CU-side Pi Agent sidecar; DU Functions remain narrow and deterministic."
+          title="Station execution topology" description="The small model stays in a lightweight Pi Agent service; Station Functions remain narrow and deterministic."
           sourceRows={cellRows} displayRows={cellRows}>
           <Topology rows={cellRows} />
         </DataComponent>
@@ -369,7 +369,7 @@ export function DashboardContent() {
 
     <footer className="fixture-note">
       <strong>Synthetic fixture</strong>
-      <span>Values demonstrate the instrumentation and experiment contract only. They are not live CU/DU measurements or physical 0.8B benchmark results.</span>
+      <span>Values demonstrate the instrumentation and experiment contract only. They are not live station measurements or physical 0.8B benchmark results.</span>
     </footer>
   </article>;
 }

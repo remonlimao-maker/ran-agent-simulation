@@ -31,17 +31,24 @@ npm run experiment -- --mode pi-faux --runs 3
 
 `demo` runs the rules-only baseline. `demo:pi` runs the real Pi Agent event and tool loop against Pi's deterministic faux provider, so it needs no model server. Both write newline-delimited events followed by a summary. A UI can subscribe through `StationAgentRuntime.subscribe()` and the Pi runner's `onEvent` callback.
 
-`npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English natural-language task to see eight auditable parsing stages, the complete structured Intent IR, separate parser/trace timing, the Pi lifecycle, deterministic runtime events, tool dispatch, and ACTION_ACK. Success, model-timeout, and function-timeout scenarios are synthetic; the console never connects to a live RAN and does not expose hidden chain-of-thought.
+`npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English task to see the parsing trace, Intent IR, Pi lifecycle, Function ACK, client CPU/RSS/heap, token usage, and a separate chip-capacity estimate. Its demo pace can be real-time, fast, standard, or slow; presentation delays are excluded from the station-control SLA. The console never connects to a live RAN or exposes hidden chain-of-thought.
 
-The local-model bridge accepts any OpenAI-compatible endpoint supported by Pi AI, including llama.cpp, vLLM, Ollama, and LM Studio:
+The model bridge accepts a local or remote OpenAI-compatible endpoint. The Agent can remain on a laptop or station simulator while inference runs through a hosted API:
 
 ```bash
-RAN_MODEL_BASE_URL=http://127.0.0.1:8000/v1 \
-RAN_MODEL_ID=Qwen/Qwen3.5-0.8B \
-npm run demo:local
+RAN_MODEL_BASE_URL=https://router.huggingface.co/v1 \
+RAN_MODEL_ID=Qwen/Qwen3-0.6B \
+RAN_MODEL_API_KEY=hf_xxx \
+npm run live
 ```
 
-Optional `RAN_MODEL_API_KEY` is forwarded as the API key. The default local profile uses a 4K context declaration, at most 32 output tokens, text only, and reasoning off.
+Select `Pi Agent · Remote model API` in the console. Confirm that the provider currently lists the model before running; provider availability is external state. The same variables work with a private vLLM, llama.cpp, Ollama, LM Studio, Alibaba PAI, or another compatible endpoint. `RAN_MODEL_API_KEY` stays server-side and is never sent to the browser.
+
+The reference model is `Qwen/Qwen3-0.6B`. Its official name counts roughly 0.6B parameters while the published repository metadata is about 0.8B total weights, making it the closest official Qwen profile to this project's “about 0.8B” target. The Pi profile uses a 4K context declaration, at most 32 output tokens, text only, and reasoning off.
+
+The resource panel separates evidence: rules/faux report only the Node Agent process; remote API mode adds provider-reported tokens and end-to-end timing but cannot see server TOPS, RAM/VRAM, bandwidth, or power. Capacity values are explicitly labeled analytical estimates until repeated on controlled hardware.
+
+The Pi execution trace exposes only operational evidence: the bounded model-request summary, tool schemas, provider-reported usage, actual tool-call name/arguments, proposal-only callback, deterministic guardrail result, Function dispatch, and ACK. It never persists assistant prose or hidden reasoning. `pi-faux` is marked as a preset fixture; only `pi-api` is marked as real model inference.
 
 ## Experiment matrix CLI
 
@@ -69,7 +76,7 @@ npm run experiment -- \
   --starts warm \
   --precisions INT4 \
   --base-url http://127.0.0.1:8000/v1 \
-  --model-id Qwen/Qwen3.5-0.8B
+  --model-id Qwen/Qwen3-0.6B
 ```
 
 Each condition reports safe completion, timeout/rejection rates, deadline-met rate, P50/P95/max ACTION_ACK latency, and peak client RSS. In `pi-faux` mode, the Pi event/tool loop is real but the configured model latency is only an injected delay. In `pi-local` mode, client RSS excludes the external model process, VRAM, and power, while precision and warm/cold are labels that the harness cannot independently verify.
@@ -135,7 +142,8 @@ In `pi-faux` mode, Pi Agent Core and the safety path are real, but model latency
 - `src/intent-parser.ts`: observable deterministic natural-language-to-Intent-IR demo parser.
 - `src/du-simulator.ts`: abortable deterministic station-function simulator (legacy internal filename).
 - `src/pi-runner.ts`: current Pi Agent Core one-shot implementation.
-- `src/pi-local.ts`: OpenAI-compatible local 0.8B provider wiring.
+- `src/pi-local.ts`: OpenAI-compatible local or remote model provider wiring.
+- `src/resource-monitor.ts`: live Agent-process sampling and explicit chip-capacity estimator.
 - `src/pi-adapter.ts`: narrow Pi-to-policy proposal boundary.
 - `src/experiment-harness.ts`: repeatable SLA/precision/start-state matrix and report generation.
 - `src/live-server.ts`: loopback-only SSE simulation console and intent parsing stream.
@@ -144,3 +152,4 @@ In `pi-faux` mode, Pi Agent Core and the safety path are real, but model latency
 - `test/runtime.test.ts`: core success, stale/unsafe input, timeout, and event-stream tests.
 - `test/pi-runner.test.ts`: real Pi tool-loop and multi-call rejection tests.
 - `test/intent-parser.test.ts`: parser output, trace order, deadline, and rejection tests.
+- `test/resource-monitor.test.ts`: measurement provenance and capacity-formula tests.

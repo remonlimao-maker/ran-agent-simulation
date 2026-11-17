@@ -27,7 +27,7 @@ const runner = new PiAgentOneShotRunner({
   streamFn: models.streamSimple.bind(models),
   onEvent: (event) => process.stdout.write(`${JSON.stringify({ stream: "pi-agent", ...event })}\n`),
 });
-const agent = new PiStationAgentAdapter(runner, "Qwen3.5-0.8B / faux transport");
+const agent = new PiStationAgentAdapter(runner, "Pi faux provider / no model inference");
 const du = new DuSimulator([{
   gnbId: "gnb-001",
   cellId: "cell-01",

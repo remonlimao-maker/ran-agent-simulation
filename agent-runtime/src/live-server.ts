@@ -13,7 +13,9 @@ import {
 import { DuSimulator } from "./du-simulator.ts";
 import { parseNaturalLanguageIntent } from "./intent-parser.ts";
 import { PiStationAgentAdapter } from "./pi-adapter.ts";
-import { PiAgentOneShotRunner } from "./pi-runner.ts";
+import { createLocalPiRunner } from "./pi-local.ts";
+import { PiAgentOneShotRunner, type PiAuditEvent } from "./pi-runner.ts";
+import { estimateModelCapacity, InferenceResourceMonitor } from "./resource-monitor.ts";
 import { RuleBasedAgent } from "./rule-agent.ts";
 import { StationAgentRuntime } from "./runtime.ts";
 import { renderLiveUi } from "./live-ui.ts";
@@ -25,13 +27,14 @@ import type {
   StationDecisionAgent,
 } from "./types.ts";
 
-export type RunMode = "rules" | "pi-faux";
+export type RunMode = "rules" | "pi-faux" | "pi-api";
 export type Scenario = "success" | "model_timeout" | "du_timeout";
 
 export interface RunRequest {
   mode: RunMode;
   scenario: Scenario;
   naturalLanguage: string;
+  demoPaceMs: number;
 }
 
 interface LiveMessage {
@@ -41,6 +44,8 @@ interface LiveMessage {
     | "intent_parse_started"
     | "intent_parse_stage"
     | "intent_ir_ready"
+    | "resource_sample"
+    | "resource_summary"
     | "event"
     | "run_complete"
     | "run_error";
@@ -83,7 +88,18 @@ export function createLiveControlServer(): LiveControlServer {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/health") {
-        sendJson(response, 200, { ok: true, running, clientCount: clients.size, lastStatus: lastResult?.status ?? null });
+        sendJson(response, 200, {
+          ok: true,
+          running,
+          clientCount: clients.size,
+          lastStatus: lastResult?.status ?? null,
+          remoteApiConfigured: Boolean(process.env.RAN_MODEL_BASE_URL),
+          remoteModelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+          capacityEstimate: estimateModelCapacity({
+            modelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+            inferenceBudgetMs: 450,
+          }),
+        });
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/events") {
@@ -123,7 +139,18 @@ export function createLiveControlServer(): LiveControlServer {
         running = true;
         const runId = crypto.randomUUID();
         sendJson(response, 202, { runId, accepted: true });
-        broadcast({ kind: "run_started", runId, ...parsed.value, deadlineMs: 1_000 });
+        broadcast({
+          kind: "run_started",
+          runId,
+          ...parsed.value,
+          deadlineMs: 1_000,
+          modelId: modelIdForMode(parsed.value.mode),
+          modelResponseSource: parsed.value.mode === "pi-api"
+            ? "remote_api"
+            : parsed.value.mode === "pi-faux"
+              ? "preset_fixture"
+              : "no_model",
+        });
         void runSyntheticTask(runId, parsed.value, broadcast).then((result) => {
           lastResult = result;
           running = false;
@@ -173,7 +200,7 @@ export async function runSyntheticTask(
   runId: string,
   request: RunRequest,
   broadcast: (message: LiveMessage) => void,
-  options: { parseStageDelayMs?: number } = {},
+  options: { parseStageDelayMs?: number; resourceSampleIntervalMs?: number } = {},
 ): Promise<RunResult> {
   broadcast({
     kind: "intent_parse_started",
@@ -183,7 +210,7 @@ export async function runSyntheticTask(
   });
   const parsed = await parseNaturalLanguageIntent(request.naturalLanguage, {
     scenario: request.scenario,
-    stageDelayMs: options.parseStageDelayMs ?? 70,
+    stageDelayMs: options.parseStageDelayMs ?? request.demoPaceMs,
     onStage: (stage) => broadcast({
       kind: "intent_parse_stage",
       runId,
@@ -203,32 +230,62 @@ export async function runSyntheticTask(
   const startedAtMs = performance.now();
   const controlElapsed = () => Math.round((performance.now() - startedAtMs) * 100) / 100;
   const du = makeDu(request.scenario === "du_timeout" ? 1_200 : 35);
-  const decisionAgent = makeAgent(request, (event) => broadcast({
-    kind: "event",
-    runId,
-    stream: "pi-agent",
-    controlElapsedMs: controlElapsed(),
-    event,
-  }));
-  const runtime = new StationAgentRuntime(decisionAgent, du);
-  const unsubscribe = runtime.subscribe((event) => broadcast({
-    kind: "event",
-    runId,
-    stream: "runtime",
-    controlElapsedMs: controlElapsed(),
-    event,
-  }));
+  const resourceMonitor = new InferenceResourceMonitor({
+    backend: request.mode,
+    modelId: modelIdForMode(request.mode),
+    capacityModelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+    inferenceBudgetMs: parsed.intent.execution.maxInferenceMs,
+    sampleIntervalMs: options.resourceSampleIntervalMs,
+    onSample: (sample) => broadcast({ kind: "resource_sample", runId, sample }),
+  });
+  resourceMonitor.start();
+  let unsubscribe: () => void = () => undefined;
 
   try {
+    const decisionAgent = makeAgent(request, (event) => {
+      resourceMonitor.recordPiUsage(event);
+      broadcast({
+        kind: "event",
+        runId,
+        stream: "pi-agent",
+        controlElapsedMs: controlElapsed(),
+        event,
+      });
+    });
+    const runtime = new StationAgentRuntime(decisionAgent, du);
+    unsubscribe = runtime.subscribe((event) => {
+      updateResourcePhase(resourceMonitor, event.type);
+      broadcast({
+        kind: "event",
+        runId,
+        stream: "runtime",
+        controlElapsedMs: controlElapsed(),
+        event,
+      });
+    });
     return await runtime.run(parsed.intent);
   } finally {
     unsubscribe();
+    broadcast({ kind: "resource_summary", runId, summary: resourceMonitor.stop() });
   }
 }
 
-function makeAgent(request: RunRequest, onPiEvent: (event: unknown) => void): StationDecisionAgent {
+function makeAgent(request: RunRequest, onPiEvent: (event: PiAuditEvent) => void): StationDecisionAgent {
   if (request.mode === "rules") {
     return request.scenario === "model_timeout" ? new SlowRulesAgent(500) : new RuleBasedAgent();
+  }
+  if (request.mode === "pi-api") {
+    const baseUrl = process.env.RAN_MODEL_BASE_URL;
+    if (!baseUrl) {
+      throw new Error("remote model API is not configured; set RAN_MODEL_BASE_URL, RAN_MODEL_ID, and optionally RAN_MODEL_API_KEY");
+    }
+    const modelId = process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
+    return new PiStationAgentAdapter(createLocalPiRunner({
+      baseUrl,
+      modelId,
+      apiKey: process.env.RAN_MODEL_API_KEY,
+      onEvent: onPiEvent,
+    }), modelId);
   }
   const faux = fauxProvider(request.scenario === "model_timeout" ? { tokensPerSecond: 4 } : undefined);
   const models = createModels();
@@ -287,7 +344,9 @@ function makeDu(ackDelayMs: number): DuSimulator {
 export function parseRunRequest(value: unknown): { ok: true; value: RunRequest } | { ok: false; error: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "request body must be an object" };
   const record = value as Record<string, unknown>;
-  if (record.mode !== "rules" && record.mode !== "pi-faux") return { ok: false, error: "mode must be rules or pi-faux" };
+  if (record.mode !== "rules" && record.mode !== "pi-faux" && record.mode !== "pi-api") {
+    return { ok: false, error: "mode must be rules, pi-faux, or pi-api" };
+  }
   if (record.scenario !== "success" && record.scenario !== "model_timeout" && record.scenario !== "du_timeout") {
     return { ok: false, error: "scenario must be success, model_timeout, or du_timeout" };
   }
@@ -297,14 +356,32 @@ export function parseRunRequest(value: unknown): { ok: true; value: RunRequest }
   if (record.naturalLanguage.length > 1_200) {
     return { ok: false, error: "naturalLanguage must not exceed 1200 characters" };
   }
+  const demoPaceMs = record.demoPaceMs ?? 300;
+  if (!Number.isInteger(demoPaceMs) || (demoPaceMs as number) < 0 || (demoPaceMs as number) > 1_000) {
+    return { ok: false, error: "demoPaceMs must be an integer between 0 and 1000" };
+  }
   return {
     ok: true,
     value: {
       mode: record.mode,
       scenario: record.scenario,
       naturalLanguage: record.naturalLanguage.trim(),
+      demoPaceMs: demoPaceMs as number,
     },
   };
+}
+
+function modelIdForMode(mode: RunMode): string {
+  if (mode === "pi-api") return process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
+  if (mode === "pi-faux") return "Pi faux provider (no model)";
+  return "rules baseline (no model)";
+}
+
+function updateResourcePhase(monitor: InferenceResourceMonitor, eventType: string): void {
+  if (eventType === "MODEL_STARTED") monitor.setPhase("inference");
+  else if (eventType === "MODEL_COMPLETED" || eventType === "PLAN_VALIDATED") monitor.setPhase("guardrail");
+  else if (eventType === "TOOL_DISPATCHED") monitor.setPhase("function");
+  else if (eventType === "ACTION_ACK" || eventType === "SAFE_NOOP" || eventType === "REJECTED") monitor.setPhase("complete");
 }
 
 export function formatSseMessage(message: Record<string, unknown>): string {
