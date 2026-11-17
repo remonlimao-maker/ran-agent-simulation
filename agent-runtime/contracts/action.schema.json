@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ran-agent/action.schema.json",
+  "title": "RAN action proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actionName", "target", "parameters", "expectedConfigVersion"],
+  "properties": {
+    "actionName": { "enum": ["set_energy_saving_mode", "set_tx_power_offset", "set_scheduler_profile"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gnbId", "cellId"],
+      "properties": {
+        "gnbId": { "type": "string", "minLength": 1 },
+        "cellId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "parameters": { "type": "object" },
+    "expectedConfigVersion": { "type": "integer", "minimum": 0 }
+  }
+}

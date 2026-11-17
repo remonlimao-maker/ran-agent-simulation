@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ran-agent/intent.schema.json",
+  "title": "RAN station intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "intentId", "issuedAt", "validUntil", "target", "objective", "constraints", "allowedActions", "execution"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "intentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "validUntil": { "type": "string", "format": "date-time" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gnbId", "cellIds"],
+      "properties": {
+        "gnbId": { "type": "string", "minLength": 1 },
+        "cellIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "direction"],
+      "properties": {
+        "metric": { "type": "string", "minLength": 1 },
+        "direction": { "enum": ["increase", "decrease", "maintain"] },
+        "target": { "type": "number" }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric", "op", "value"],
+        "properties": {
+          "metric": { "type": "string", "minLength": 1 },
+          "op": { "enum": [">=", "<=", "=="] },
+          "value": { "type": "number" }
+        }
+      }
+    },
+    "allowedActions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["set_energy_saving_mode", "set_tx_power_offset", "set_scheduler_profile"] }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["controlDeadlineMs", "maxInferenceMs", "maxCells", "completionSemantics", "timeoutPolicy"],
+      "properties": {
+        "controlDeadlineMs": { "type": "integer", "minimum": 50, "maximum": 10000 },
+        "maxInferenceMs": { "type": "integer", "minimum": 1, "maximum": 9000 },
+        "maxCells": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "completionSemantics": { "const": "ACTION_ACK" },
+        "timeoutPolicy": { "const": "SAFE_NOOP" },
+        "dryRun": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}

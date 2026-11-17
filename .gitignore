@@ -1,0 +1,26 @@
+.DS_Store
+*.log
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# JavaScript dependencies and caches
+**/node_modules/
+**/.cache/
+**/.vite/
+coverage/
+
+# Generated experiment outputs (may contain machine-local paths)
+agent-runtime/results/
+
+# Generated dashboard artifacts
+ran-agent-dashboard/dist/
+ran-agent-dashboard/.data-app-offline/
+ran-agent-dashboard/.data-app-qa/
+
+# Local editor and OS state
+.idea/
+.vscode/
+*.swp

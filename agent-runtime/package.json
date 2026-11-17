@@ -1,0 +1,24 @@
+{
+  "name": "ran-station-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight Pi Agent CU/DU control-loop prototype with a deterministic safety core",
+  "scripts": {
+    "demo": "node src/demo.ts",
+    "demo:pi": "node src/demo-pi.ts",
+    "demo:local": "node src/demo-local.ts",
+    "bench:pi": "node --expose-gc src/bench-pi.ts",
+    "experiment": "node src/experiment-cli.ts",
+    "live": "node src/live-server.ts",
+    "test": "node --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22.19"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-schema": "1.5.2"
+  }
+}

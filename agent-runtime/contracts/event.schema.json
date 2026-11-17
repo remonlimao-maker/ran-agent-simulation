@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ran-agent/event.schema.json",
+  "title": "RAN station-agent runtime event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sequence", "eventId", "intentId", "type", "timestamp", "elapsedMs", "source", "detail"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "eventId": { "type": "string", "minLength": 1 },
+    "intentId": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["INTENT_RECEIVED", "SCHEMA_VALIDATED", "SNAPSHOT_CAPTURED", "MODEL_STARTED", "MODEL_COMPLETED", "PLAN_VALIDATED", "TOOL_DISPATCHED", "ACTION_ACK", "SAFE_NOOP", "REJECTED"] },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "elapsedMs": { "type": "number", "minimum": 0 },
+    "source": { "enum": ["cu-agent", "guardrail", "du-executor"] },
+    "detail": { "type": "object" }
+  }
+}

@@ -1,0 +1,614 @@
+{
+  "id": "dashboard:0f6f5263-c6b2-4583-84d4-31dbd05ad829",
+  "title": "RAN Agent Control Lab",
+  "generatedAt": "2026-11-17T01:00:00Z",
+  "buildStatus": "complete",
+  "status": "fixture",
+  "surface": "dashboard",
+  "filters": [
+    {
+      "id": "slaProfile",
+      "label": "Control SLA",
+      "field": "slaProfile",
+      "defaultValue": "Near-RT · 1000 ms",
+      "queryIds": [
+        "tasks"
+      ]
+    },
+    {
+      "id": "model",
+      "label": "Edge model",
+      "field": "model",
+      "defaultValue": "all",
+      "queryIds": [
+        "tasks"
+      ]
+    },
+    {
+      "id": "precision",
+      "label": "Precision",
+      "field": "precision",
+      "defaultValue": "all",
+      "queryIds": [
+        "tasks"
+      ]
+    },
+    {
+      "id": "startup",
+      "label": "Model state",
+      "field": "startup",
+      "defaultValue": "all",
+      "queryIds": [
+        "tasks"
+      ]
+    }
+  ],
+  "queries": {
+    "tasks": {
+      "rows": [
+        {
+          "taskId": "task-042",
+          "scenario": "Cell energy optimization",
+          "slaProfile": "Near-RT · 1000 ms",
+          "slaMs": 1000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 5,
+          "contextTokens": 246,
+          "totalLatencyMs": 785,
+          "modelLatencyMs": 410,
+          "status": "observing",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": -15.2,
+          "throughputP95Mbps": 52.8,
+          "rrcSuccessRate": 0.993,
+          "startedAt": "2026-11-17T00:58:00Z",
+          "targetComponent": "DU-01 / cell-03"
+        },
+        {
+          "taskId": "task-041",
+          "scenario": "Cell energy optimization",
+          "slaProfile": "Fast · 500 ms",
+          "slaMs": 500,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 5,
+          "contextTokens": 246,
+          "totalLatencyMs": 782,
+          "modelLatencyMs": 408,
+          "status": "safe_timeout",
+          "safeSuccess": false,
+          "deadlineMet": false,
+          "falseActuation": false,
+          "energyDeltaPct": 0,
+          "throughputP95Mbps": 54.1,
+          "rrcSuccessRate": 0.994,
+          "startedAt": "2026-11-17T00:51:00Z",
+          "targetComponent": "DU-01 / cell-03"
+        },
+        {
+          "taskId": "task-040",
+          "scenario": "PRB quota adjustment",
+          "slaProfile": "Near-RT · 1000 ms",
+          "slaMs": 1000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT8",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 8,
+          "contextTokens": 312,
+          "totalLatencyMs": 846,
+          "modelLatencyMs": 468,
+          "status": "succeeded",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": -1.8,
+          "throughputP95Mbps": 61.7,
+          "rrcSuccessRate": 0.995,
+          "startedAt": "2026-11-17T00:44:00Z",
+          "targetComponent": "DU-02 / cell-05"
+        },
+        {
+          "taskId": "task-039",
+          "scenario": "Mobility profile change",
+          "slaProfile": "Near-RT · 1000 ms",
+          "slaMs": 1000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 8,
+          "contextTokens": 388,
+          "totalLatencyMs": 932,
+          "modelLatencyMs": 522,
+          "status": "rolled_back",
+          "safeSuccess": false,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": 0,
+          "throughputP95Mbps": 49.4,
+          "rrcSuccessRate": 0.988,
+          "startedAt": "2026-11-17T00:36:00Z",
+          "targetComponent": "CU-CP / cluster-a"
+        },
+        {
+          "taskId": "task-038",
+          "scenario": "Cell energy optimization",
+          "slaProfile": "Relaxed · 3000 ms",
+          "slaMs": 3000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": false,
+          "startup": "Cold",
+          "toolCount": 5,
+          "contextTokens": 246,
+          "totalLatencyMs": 2120,
+          "modelLatencyMs": 1650,
+          "status": "succeeded",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": -14.4,
+          "throughputP95Mbps": 51.9,
+          "rrcSuccessRate": 0.992,
+          "startedAt": "2026-11-17T00:28:00Z",
+          "targetComponent": "DU-01 / cell-03"
+        },
+        {
+          "taskId": "task-037",
+          "scenario": "Cell energy optimization",
+          "slaProfile": "Ultra · 250 ms",
+          "slaMs": 250,
+          "model": "Rules",
+          "precision": "deterministic",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 5,
+          "contextTokens": 0,
+          "totalLatencyMs": 138,
+          "modelLatencyMs": 0,
+          "status": "succeeded",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": -11.8,
+          "throughputP95Mbps": 53.6,
+          "rrcSuccessRate": 0.994,
+          "startedAt": "2026-11-17T00:20:00Z",
+          "targetComponent": "DU-01 / cell-03"
+        },
+        {
+          "taskId": "task-036",
+          "scenario": "Conflicting intent",
+          "slaProfile": "Near-RT · 1000 ms",
+          "slaMs": 1000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 8,
+          "contextTokens": 440,
+          "totalLatencyMs": 694,
+          "modelLatencyMs": 351,
+          "status": "rejected",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": 0,
+          "throughputP95Mbps": 54,
+          "rrcSuccessRate": 0.994,
+          "startedAt": "2026-11-17T00:14:00Z",
+          "targetComponent": "CU Agent"
+        },
+        {
+          "taskId": "task-035",
+          "scenario": "Stale telemetry",
+          "slaProfile": "Near-RT · 1000 ms",
+          "slaMs": 1000,
+          "model": "Qwen3.5-0.8B",
+          "precision": "INT4",
+          "warm": true,
+          "startup": "Warm",
+          "toolCount": 5,
+          "contextTokens": 238,
+          "totalLatencyMs": 308,
+          "modelLatencyMs": 0,
+          "status": "rejected",
+          "safeSuccess": true,
+          "deadlineMet": true,
+          "falseActuation": false,
+          "energyDeltaPct": 0,
+          "throughputP95Mbps": 54.3,
+          "rrcSuccessRate": 0.994,
+          "startedAt": "2026-11-17T00:09:00Z",
+          "targetComponent": "DU-02 / cell-06"
+        }
+      ],
+      "source": {
+        "label": "RAN Agent deterministic simulation runs",
+        "caveats": [
+          "Synthetic fixture generated for the v0.1 control-path prototype. Values are not measurements from a live CU, DU, radio network, or physical 0.8B inference host."
+        ],
+        "evidenceFlow": [
+          {
+            "title": "Scenario generator",
+            "detail": "Deterministic fixture for CU Agent, DU executor, safety timeout, rollback, and SLA profile states."
+          },
+          {
+            "title": "Metric derivation",
+            "detail": "Deadline met when totalLatencyMs is no greater than slaMs. Safe success requires no false actuation and the scenario-appropriate terminal state."
+          }
+        ],
+        "metricDefinitions": [
+          {
+            "label": "Control-path latency",
+            "definition": "Elapsed time from receipt of a validated structured intent to CU/DU Function ACK or safe terminal rejection.",
+            "componentIds": [
+              "control-latency",
+              "task-run-table"
+            ]
+          },
+          {
+            "label": "Safe task completion",
+            "definition": "The task reaches its scenario-appropriate safe terminal state without false actuation; a correct rejection can count as safe completion.",
+            "componentIds": [
+              "safe-task-completion",
+              "task-run-table"
+            ]
+          },
+          {
+            "label": "Deadline miss",
+            "definition": "Control-path latency exceeds the selected SLA; late model output is discarded and cannot actuate.",
+            "componentIds": [
+              "deadline-status",
+              "task-run-table"
+            ]
+          }
+        ]
+      }
+    },
+    "spans": {
+      "rows": [
+        {
+          "taskId": "task-042",
+          "stageOrder": 1,
+          "stage": "Intent validation",
+          "component": "CU Agent gateway",
+          "startMs": 0,
+          "durationMs": 35,
+          "endMs": 35,
+          "status": "ok",
+          "detail": "Schema v0.1 and signature valid"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 2,
+          "stage": "Capability check",
+          "component": "CU Agent policy gate",
+          "startMs": 35,
+          "durationMs": 25,
+          "endMs": 60,
+          "status": "ok",
+          "detail": "Three allowed actions available"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 3,
+          "stage": "Telemetry snapshot",
+          "component": "CU/DU adapter",
+          "startMs": 60,
+          "durationMs": 80,
+          "endMs": 140,
+          "status": "ok",
+          "detail": "Snapshot version 1884, freshness 42 ms"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 4,
+          "stage": "0.8B policy selection",
+          "component": "CU Agent model",
+          "startMs": 140,
+          "durationMs": 410,
+          "endMs": 550,
+          "status": "ok",
+          "detail": "Selected energy-save.canary"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 5,
+          "stage": "Deterministic guardrails",
+          "component": "CU Agent safety supervisor",
+          "startMs": 550,
+          "durationMs": 74,
+          "endMs": 624,
+          "status": "ok",
+          "detail": "Nine invariants passed"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 6,
+          "stage": "DU Function dispatch",
+          "component": "DU-01 executor",
+          "startMs": 624,
+          "durationMs": 120,
+          "endMs": 744,
+          "status": "ok",
+          "detail": "set_energy_mode(ECO), idempotent"
+        },
+        {
+          "taskId": "task-042",
+          "stageOrder": 7,
+          "stage": "Execution ACK",
+          "component": "DU-01 executor",
+          "startMs": 744,
+          "durationMs": 41,
+          "endMs": 785,
+          "status": "ok",
+          "detail": "Config version 1885 committed"
+        }
+      ],
+      "source": {
+        "label": "Synthetic control-path trace",
+        "caveats": [
+          "Fixture spans model the intended instrumentation contract and are not measured timings."
+        ],
+        "metricDefinitions": [
+          {
+            "label": "Stage duration",
+            "definition": "Synthetic elapsed milliseconds attributed to one non-overlapping control-path stage for task-042.",
+            "componentIds": [
+              "execution-timeline",
+              "stage-waterfall"
+            ]
+          }
+        ]
+      }
+    },
+    "cells": {
+      "rows": [
+        {
+          "cu": "CU-01",
+          "du": "DU-01",
+          "cell": "cell-01",
+          "loadPct": 64,
+          "state": "active",
+          "selected": false,
+          "neighborHeadroomPct": 28
+        },
+        {
+          "cu": "CU-01",
+          "du": "DU-01",
+          "cell": "cell-02",
+          "loadPct": 48,
+          "state": "active",
+          "selected": false,
+          "neighborHeadroomPct": 34
+        },
+        {
+          "cu": "CU-01",
+          "du": "DU-01",
+          "cell": "cell-03",
+          "loadPct": 11,
+          "state": "eco_canary",
+          "selected": true,
+          "neighborHeadroomPct": 41
+        },
+        {
+          "cu": "CU-01",
+          "du": "DU-02",
+          "cell": "cell-04",
+          "loadPct": 72,
+          "state": "active",
+          "selected": false,
+          "neighborHeadroomPct": 19
+        },
+        {
+          "cu": "CU-01",
+          "du": "DU-02",
+          "cell": "cell-05",
+          "loadPct": 4,
+          "state": "sleep",
+          "selected": false,
+          "neighborHeadroomPct": 37
+        },
+        {
+          "cu": "CU-01",
+          "du": "DU-02",
+          "cell": "cell-06",
+          "loadPct": 39,
+          "state": "active",
+          "selected": false,
+          "neighborHeadroomPct": 31
+        }
+      ],
+      "source": {
+        "label": "Synthetic CU/DU topology snapshot",
+        "caveats": [
+          "Fictional topology for interface and interaction testing."
+        ],
+        "metricDefinitions": [
+          {
+            "label": "Cell load",
+            "definition": "Synthetic percentage of configured cell serving capacity used at intent evaluation time.",
+            "componentIds": [
+              "cudu-topology"
+            ]
+          }
+        ]
+      }
+    },
+    "telemetry": {
+      "rows": [
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": -20,
+          "energyKw": 10.4,
+          "throughputP95Mbps": 54.1,
+          "rrcSuccessRate": 0.994,
+          "phase": "baseline"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": -10,
+          "energyKw": 10.3,
+          "throughputP95Mbps": 53.9,
+          "rrcSuccessRate": 0.994,
+          "phase": "baseline"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": 0,
+          "energyKw": 10.4,
+          "throughputP95Mbps": 54,
+          "rrcSuccessRate": 0.994,
+          "phase": "action"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": 3,
+          "energyKw": 9.6,
+          "throughputP95Mbps": 53.4,
+          "rrcSuccessRate": 0.993,
+          "phase": "observing"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": 6,
+          "energyKw": 9.1,
+          "throughputP95Mbps": 52.9,
+          "rrcSuccessRate": 0.993,
+          "phase": "observing"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": 9,
+          "energyKw": 8.9,
+          "throughputP95Mbps": 52.6,
+          "rrcSuccessRate": 0.993,
+          "phase": "observing"
+        },
+        {
+          "taskId": "task-042",
+          "elapsedSeconds": 12,
+          "energyKw": 8.8,
+          "throughputP95Mbps": 52.8,
+          "rrcSuccessRate": 0.993,
+          "phase": "observing"
+        }
+      ],
+      "source": {
+        "label": "Synthetic post-action KPI observation",
+        "caveats": [
+          "Modeled values illustrate separate control-path and effect-verification clocks; they are not radio measurements."
+        ],
+        "metricDefinitions": [
+          {
+            "label": "Energy consumption",
+            "definition": "Modeled aggregate power draw in kilowatts for the selected DU scope.",
+            "componentIds": [
+              "effect-telemetry"
+            ]
+          },
+          {
+            "label": "DL throughput P95",
+            "definition": "Modeled 95th-percentile downlink throughput in Mbps for the selected cell scope.",
+            "componentIds": [
+              "effect-telemetry"
+            ]
+          },
+          {
+            "label": "RRC success rate",
+            "definition": "Modeled successful RRC establishments divided by eligible attempts in the observation window.",
+            "componentIds": [
+              "effect-telemetry"
+            ]
+          }
+        ]
+      }
+    },
+    "events": {
+      "rows": [
+        {
+          "taskId": "task-042",
+          "sequence": 1,
+          "offsetMs": 0,
+          "eventType": "INTENT_ACCEPTED",
+          "component": "CU Agent gateway",
+          "status": "ok",
+          "summary": "Customer scope, schema, and signature accepted"
+        },
+        {
+          "taskId": "task-042",
+          "sequence": 2,
+          "offsetMs": 140,
+          "eventType": "INFERENCE_STARTED",
+          "component": "CU Agent model",
+          "status": "ok",
+          "summary": "Five candidate policy templates"
+        },
+        {
+          "taskId": "task-042",
+          "sequence": 3,
+          "offsetMs": 550,
+          "eventType": "PLAN_PROPOSED",
+          "component": "CU Agent model",
+          "status": "ok",
+          "summary": "One-cell canary using ECO profile"
+        },
+        {
+          "taskId": "task-042",
+          "sequence": 4,
+          "offsetMs": 624,
+          "eventType": "GUARDRAILS_PASSED",
+          "component": "Safety supervisor",
+          "status": "ok",
+          "summary": "No hard constraint violation"
+        },
+        {
+          "taskId": "task-042",
+          "sequence": 5,
+          "offsetMs": 744,
+          "eventType": "ACTION_APPLIED",
+          "component": "DU-01 executor",
+          "status": "ok",
+          "summary": "Config version 1885 applied"
+        },
+        {
+          "taskId": "task-042",
+          "sequence": 6,
+          "offsetMs": 785,
+          "eventType": "EXECUTION_ACK",
+          "component": "DU-01 executor",
+          "status": "ok",
+          "summary": "Control path complete; effect verification continues"
+        }
+      ],
+      "source": {
+        "label": "Synthetic Agent audit events",
+        "caveats": [
+          "Auditable event summaries intentionally exclude hidden model reasoning or chain-of-thought."
+        ],
+        "metricDefinitions": [
+          {
+            "label": "Audit event",
+            "definition": "Structured state transition or CU/DU Function outcome emitted by the simulated control path.",
+            "componentIds": [
+              "audit-events"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "exportPreferences": {
+    "selected": null,
+    "destinations": []
+  }
+}
