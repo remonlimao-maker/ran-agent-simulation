@@ -1,0 +1,81 @@
+@startuml
+title RAN Agent Simulation — 分层架构
+
+top to bottom direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 14
+skinparam linetype ortho
+skinparam defaultFontName SansSerif
+skinparam defaultFontColor #172033
+skinparam ArrowColor #4263EB
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam package {
+  BackgroundColor #F8FAFC
+  BorderColor #CBD5E1
+  FontColor #172033
+}
+skinparam component {
+  BackgroundColor #EEF4FF
+  BorderColor #4263EB
+  FontColor #172033
+}
+skinparam artifact {
+  BackgroundColor #FFF7E8
+  BorderColor #E09F3E
+  FontColor #172033
+}
+skinparam database {
+  BackgroundColor #ECFDF3
+  BorderColor #2F9E60
+  FontColor #172033
+}
+
+actor "运营人员 / 上游系统" as Operator
+
+package "意图平面" as IntentPlane {
+  [网管 Intent Agent\n自然语言 → 结构化意图] as IntentAgent
+  artifact "Intent IR\n目标 · 约束 · 动作白名单\n有效期 · SLA" as IntentIR
+  IntentAgent -right-> IntentIR : 生成契约
+}
+
+package "轻量决策与安全平面" as DecisionPlane {
+  [Agent Runtime\n时限、取消与事务编排] as Runtime
+  database "状态快照\nKPI + configVersion" as Snapshot
+  [决策器\nRules 或 Pi Agent + 约 0.8B] as Decision
+  [确定性 Guardrail\nSchema · Scope · State · Deadline] as Guard
+  [Event Journal\n有序、只读事件] as Journal
+
+  Snapshot -right-> Runtime : 一致性状态
+  Runtime -down-> Decision : Intent + Snapshot\n+ 受限工具
+  Decision -down-> Guard : 一个 Action Proposal
+  Runtime -right-> Journal : 阶段事件
+}
+
+package "执行平面" as ExecutionPlane {
+  [Function Adapter\n受限 · 可取消 · 版本化] as Adapter
+  [模拟网络功能] as Functions
+  Adapter -right-> Functions : 强类型调用
+  Functions -left-> Adapter : ACTION_ACK
+}
+
+package "实验与观察平面" as ObservePlane {
+  [Experiment Harness\n条件矩阵与规则基线] as Harness
+  [Event Stream] as Stream
+  [浅色可视化控制台\n拓扑 · 事件 · SLA · 结果] as UI
+  database "JSON / CSV 结果" as Results
+
+  Stream -right-> UI : SSE / 订阅
+  Harness -right-> Results : 汇总与导出
+}
+
+Operator -down-> IntentAgent : 自然语言目标
+IntentIR -down-> Runtime : 提交 Intent
+Guard -down-> Adapter : 已验证动作
+Adapter -up-> Runtime : ACK + 新版本
+
+Harness -up-> Runtime : 场景与实验条件
+Runtime -down-> Results : 状态、时延与事件
+Journal -down-> Stream : 旁路发布
+@enduml

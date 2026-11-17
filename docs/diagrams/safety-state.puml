@@ -1,0 +1,79 @@
+@startuml
+title RAN Agent Simulation — 安全执行状态机
+
+hide empty description
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 14
+skinparam defaultFontName SansSerif
+skinparam defaultFontColor #172033
+skinparam ArrowColor #4263EB
+skinparam state {
+  BackgroundColor #EEF4FF
+  BorderColor #4263EB
+  FontColor #172033
+  StartColor #2F9E60
+  EndColor #64748B
+}
+skinparam note {
+  BackgroundColor #FFF7E8
+  BorderColor #E09F3E
+  FontColor #172033
+}
+
+state "已接收\nINTENT_RECEIVED" as Received
+state "快照就绪" as SnapshotReady
+state "决策中\nRules 或 Pi + 0.8B" as Deciding
+state "动作已提出" as Proposed
+state "计划已验证" as PlanValidated
+state "执行中" as Dispatching
+state "已确认\nACTION_ACK" as Acked #ECFDF3
+state "安全空操作\nSAFE_NOOP" as SafeNoop #FFF7E8
+state "已拒绝\nREJECTED" as Rejected #FFF1F2
+state "效果观察（规划）\nT_effect" as Observing
+state "完成 / 回滚" as Finished #ECFDF3
+
+[*] --> Received
+
+Received --> Rejected : Schema / 有效期 / 重放 / 预算无效
+Received --> SnapshotReady : Intent 校验并占用成功
+
+SnapshotReady --> Rejected : 遥测缺失、陈旧或约束不满足
+SnapshotReady --> Deciding : 输入受限上下文与候选工具
+
+Deciding --> Proposed : 恰好一个 proposal
+Deciding --> SafeNoop : 推理超时、取消或无输出
+
+Proposed --> Rejected : 动作未授权、目标越界、参数非法
+Proposed --> PlanValidated : 确定性校验通过
+
+PlanValidated --> SafeNoop : dispatch 前已到截止时间
+PlanValidated --> Dispatching : 仍有执行预算
+
+Dispatching --> Acked : 截止前提交并收到 ACK
+Dispatching --> SafeNoop : 执行超时或取消
+Dispatching --> Rejected : 版本冲突或前置条件失败
+
+Acked --> Observing : 进入独立 KPI 窗口
+Observing --> Finished : 目标满足
+Observing --> Finished : 回滚 / 安全恢复
+
+SafeNoop --> [*] : safe_timeout
+Rejected --> [*] : rejected
+Finished --> [*]
+
+note right of SafeNoop
+超时会撤销执行资格；
+迟到模型结果不得重新进入 dispatch。
+end note
+
+note right of Deciding
+规则与模型是可比较的决策器，
+并非默认自动降级关系。
+end note
+
+note bottom of Acked
+ACK 是控制确认，不等于 KPI 已生效；
+效果验证使用独立的 T_effect。
+end note
+@enduml

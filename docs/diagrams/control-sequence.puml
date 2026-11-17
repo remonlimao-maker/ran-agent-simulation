@@ -1,0 +1,105 @@
+@startuml
+title RAN Agent Simulation — 端到端控制时序
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName SansSerif
+skinparam defaultFontColor #172033
+skinparam sequence {
+  ArrowColor #4263EB
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #F8FAFC
+  ParticipantBorderColor #4263EB
+  ParticipantBackgroundColor #EEF4FF
+  ParticipantFontColor #172033
+  ActorBorderColor #4263EB
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #CBD5E1
+  GroupBackgroundColor #F8FAFC
+  GroupHeaderFontColor #172033
+}
+skinparam note {
+  BackgroundColor #FFF7E8
+  BorderColor #E09F3E
+  FontColor #172033
+}
+
+autonumber
+actor "运营人员" as Operator
+participant "网管\nIntent Agent" as IntentAgent
+participant "Agent\nRuntime" as Runtime
+participant "确定性\nGuardrail" as Guard
+participant "状态快照" as Snapshot
+participant "Pi Agent\n约 0.8B 模型" as Model
+participant "Function\nAdapter" as Adapter
+participant "模拟网络功能" as Function
+participant "事件流 / UI" as UI
+participant "效果观察器\n（规划）" as Observer
+
+Operator -> IntentAgent : 自然语言目标
+IntentAgent -> Runtime : Intent IR\n目标、约束、允许动作、SLA
+
+group T_ack：Intent received → ACTION_ACK（目标 P95 ≤ 1,000 ms）
+  Runtime -> UI : INTENT_RECEIVED
+  Runtime -> Guard : Schema、有效期、重放、预算
+
+  alt Intent 无效
+    Guard --> Runtime : reject(reason)
+    Runtime -> UI : REJECTED
+  else Intent 有效
+    Runtime -> Snapshot : 获取目标状态
+    Snapshot --> Runtime : KPI + configVersion
+    Runtime -> Guard : 校验遥测完整性与约束
+
+    alt 状态不可用或违反约束
+      Guard --> Runtime : reject(reason)
+      Runtime -> UI : REJECTED
+    else 允许进入决策
+      Runtime -> Model : 受限工具 + 短上下文\nmaxInferenceMs + AbortSignal
+
+      note right of Model
+      只允许一个 proposal；
+      tool callback 不产生真实动作。
+      end note
+
+      alt 推理超时、取消或无合法提案
+        Runtime -> Model : abort()
+        Runtime -> UI : SAFE_NOOP\n丢弃迟到结果
+      else 返回 Action Proposal
+        Model --> Runtime : action + target + params + expectedVersion
+        Runtime -> Guard : 校验动作、范围、参数和版本
+
+        alt Proposal 非法
+          Guard --> Runtime : reject(reason)
+          Runtime -> UI : REJECTED
+        else Proposal 合法且仍有预算
+          Guard --> Runtime : validated action
+          Runtime -> Adapter : dispatch(action, deadline, dryRun)
+          Adapter -> Function : 执行受限 Function
+
+          alt 截止前收到确认
+            Function --> Adapter : ACTION_ACK + configVersion
+            Adapter --> Runtime : ACK
+            Runtime -> UI : ACTION_ACK
+          else 执行超时或被取消
+            Runtime -> Adapter : abort()
+            Runtime -> UI : SAFE_NOOP
+          end
+        end
+      end
+    end
+  end
+end
+
+group T_effect（规划闭环）：ACK 后独立观察，不计入 1 秒 ACK
+  Runtime -> Observer : 启动 KPI 观察窗口
+  Observer -> Snapshot : 读取效果指标
+  alt 目标满足且约束保持
+    Observer -> UI : EFFECT_OK
+  else 效果不足或约束受损
+    Observer -> Adapter : 请求回滚 / 安全恢复
+    Observer -> UI : ROLLBACK_RESULT
+  end
+end
+@enduml
