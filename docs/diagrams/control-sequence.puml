@@ -27,7 +27,7 @@ skinparam note {
 
 autonumber
 actor "运营人员" as Operator
-participant "网管\nIntent Agent" as IntentAgent
+participant "网管 Intent Agent\n大模型 / 合成基线" as IntentAgent
 participant "Agent\nRuntime" as Runtime
 participant "确定性\nGuardrail" as Guard
 participant "状态快照" as Snapshot
@@ -38,7 +38,13 @@ participant "事件流 / UI" as UI
 participant "效果观察器\n（规划）" as Observer
 
 Operator -> IntentAgent : 自然语言目标
+IntentAgent -> IntentAgent : 结构化 Tool Call\n+ 确定性 Schema 校验
 IntentAgent -> Runtime : Intent IR\n目标、约束、允许动作、SLA
+
+note over IntentAgent, Runtime
+网管大模型解析耗时单独报告，
+不计入基站侧 1 秒 T_ack。
+end note
 
 group T_ack：Intent received → ACTION_ACK（目标 P95 ≤ 1,000 ms）
   Runtime -> UI : INTENT_RECEIVED

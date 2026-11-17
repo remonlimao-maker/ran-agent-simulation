@@ -11,7 +11,8 @@ import {
 } from "@earendil-works/pi-ai";
 
 import { DuSimulator } from "./du-simulator.ts";
-import { parseNaturalLanguageIntent } from "./intent-parser.ts";
+import { parseNaturalLanguageIntentWithModel } from "./intent-model.ts";
+import { parseNaturalLanguageIntent, type IntentParseStage } from "./intent-parser.ts";
 import { PiStationAgentAdapter } from "./pi-adapter.ts";
 import { createLocalPiRunner } from "./pi-local.ts";
 import { PiAgentOneShotRunner, type PiAuditEvent } from "./pi-runner.ts";
@@ -29,8 +30,11 @@ import type {
 
 export type RunMode = "rules" | "pi-faux" | "pi-api";
 export type Scenario = "success" | "model_timeout" | "du_timeout";
+export type IntentMode = "synthetic" | "intent-api";
+export type ModelRole = "intent" | "station";
 
 export interface RunRequest {
+  intentMode: IntentMode;
   mode: RunMode;
   scenario: Scenario;
   naturalLanguage: string;
@@ -45,6 +49,7 @@ export interface RemoteModelConfig {
 }
 
 export interface PublicRemoteModelConfig {
+  role: ModelRole;
   configured: boolean;
   baseUrl: string;
   modelId: string;
@@ -53,7 +58,8 @@ export interface PublicRemoteModelConfig {
   persistence: "process_memory";
 }
 
-const DEFAULT_REMOTE_MODEL_ID = "Qwen/Qwen3-0.6B";
+const DEFAULT_INTENT_MODEL_ID = "Qwen/Qwen3-8B";
+const DEFAULT_STATION_MODEL_ID = "Qwen/Qwen3-0.6B";
 
 interface LiveMessage {
   kind:
@@ -81,7 +87,10 @@ export function createLiveControlServer(): LiveControlServer {
   const clients = new Set<ServerResponse>();
   let running = false;
   let lastResult: RunResult | undefined;
-  let remoteModelConfig = modelConfigFromEnvironment();
+  const modelConfigs: Record<ModelRole, RemoteModelConfig> = {
+    intent: modelConfigFromEnvironment("intent"),
+    station: modelConfigFromEnvironment("station"),
+  };
 
   const broadcast = (message: LiveMessage): void => {
     const frame = formatSseMessage(message);
@@ -112,17 +121,26 @@ export function createLiveControlServer(): LiveControlServer {
           running,
           clientCount: clients.size,
           lastStatus: lastResult?.status ?? null,
-          remoteApiConfigured: Boolean(remoteModelConfig.baseUrl),
-          remoteModelId: remoteModelConfig.modelId,
+          intentApiConfigured: Boolean(modelConfigs.intent.baseUrl),
+          intentModelId: modelConfigs.intent.modelId,
+          stationApiConfigured: Boolean(modelConfigs.station.baseUrl),
+          stationModelId: modelConfigs.station.modelId,
+          remoteApiConfigured: Boolean(modelConfigs.station.baseUrl),
+          remoteModelId: modelConfigs.station.modelId,
           capacityEstimate: estimateModelCapacity({
-            modelId: remoteModelConfig.modelId,
+            modelId: modelConfigs.station.modelId,
             inferenceBudgetMs: 450,
           }),
         });
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/model-config") {
-        sendJson(response, 200, publicModelConfig(remoteModelConfig));
+        const role = parseModelRole(url.searchParams.get("role"));
+        if (!role) {
+          sendJson(response, 400, { error: "role must be intent or station" });
+          return;
+        }
+        sendJson(response, 200, publicModelConfig(role, modelConfigs[role]));
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/model-config") {
@@ -137,13 +155,20 @@ export function createLiveControlServer(): LiveControlServer {
           sendJson(response, 400, { error: error instanceof Error ? error.message : String(error) });
           return;
         }
-        const parsed = parseModelConfigUpdate(body, remoteModelConfig);
+        const role = parseModelRole(body && typeof body === "object" && !Array.isArray(body)
+          ? (body as Record<string, unknown>).role
+          : undefined);
+        if (!role) {
+          sendJson(response, 400, { error: "role must be intent or station" });
+          return;
+        }
+        const parsed = parseModelConfigUpdate(body, modelConfigs[role]);
         if (!parsed.ok) {
           sendJson(response, 400, { error: parsed.error });
           return;
         }
-        remoteModelConfig = parsed.value;
-        sendJson(response, 200, publicModelConfig(remoteModelConfig));
+        modelConfigs[role] = parsed.value;
+        sendJson(response, 200, publicModelConfig(role, modelConfigs[role]));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/events") {
@@ -183,20 +208,30 @@ export function createLiveControlServer(): LiveControlServer {
         running = true;
         const runId = crypto.randomUUID();
         sendJson(response, 202, { runId, accepted: true });
-        const taskModelConfig = structuredClone(remoteModelConfig);
+        const taskModelConfigs = structuredClone(modelConfigs);
         broadcast({
           kind: "run_started",
           runId,
           ...parsed.value,
           deadlineMs: 1_000,
-          modelId: modelIdForMode(parsed.value.mode, taskModelConfig),
+          intentModelId: parsed.value.intentMode === "intent-api"
+            ? taskModelConfigs.intent.modelId
+            : "synthetic-intent-agent/0.1 (no model)",
+          intentResponseSource: parsed.value.intentMode === "intent-api" ? "remote_api" : "synthetic_parser",
+          stationModelId: modelIdForMode(parsed.value.mode, taskModelConfigs.station),
+          stationResponseSource: parsed.value.mode === "pi-api"
+            ? "remote_api"
+            : parsed.value.mode === "pi-faux"
+              ? "preset_fixture"
+              : "no_model",
+          modelId: modelIdForMode(parsed.value.mode, taskModelConfigs.station),
           modelResponseSource: parsed.value.mode === "pi-api"
             ? "remote_api"
             : parsed.value.mode === "pi-faux"
               ? "preset_fixture"
               : "no_model",
         });
-        void runSyntheticTask(runId, parsed.value, broadcast, { remoteModelConfig: taskModelConfig }).then((result) => {
+        void runSyntheticTask(runId, parsed.value, broadcast, { modelConfigs: taskModelConfigs }).then((result) => {
           lastResult = result;
           running = false;
           broadcast({ kind: "run_complete", runId, result });
@@ -248,25 +283,37 @@ export async function runSyntheticTask(
   options: {
     parseStageDelayMs?: number;
     resourceSampleIntervalMs?: number;
-    remoteModelConfig?: RemoteModelConfig;
+    modelConfigs?: Record<ModelRole, RemoteModelConfig>;
   } = {},
 ): Promise<RunResult> {
+  const modelConfigs = options.modelConfigs ?? {
+    intent: modelConfigFromEnvironment("intent"),
+    station: modelConfigFromEnvironment("station"),
+  };
   broadcast({
     kind: "intent_parse_started",
     runId,
-    label: "网管 Intent Agent 正在解析 / Parsing operator intent",
-    parser: "synthetic-intent-agent/0.1",
+    label: request.intentMode === "intent-api"
+      ? "网管大模型正在解析 / Management LLM parsing"
+      : "网管合成解析器正在解析 / Synthetic intent parser",
+    parser: request.intentMode === "intent-api"
+      ? modelConfigs.intent.modelId
+      : "synthetic-intent-agent/0.1 (no model)",
+    modelResponseSource: request.intentMode === "intent-api" ? "remote_api" : "synthetic_parser",
   });
-  const parsed = await parseNaturalLanguageIntent(request.naturalLanguage, {
+  const parserOptions = {
     scenario: request.scenario,
     stageDelayMs: options.parseStageDelayMs ?? request.demoPaceMs,
-    onStage: (stage) => broadcast({
+    onStage: (stage: IntentParseStage) => broadcast({
       kind: "intent_parse_stage",
       runId,
       stream: "intent-agent",
       stage,
     }),
-  });
+  };
+  const parsed = request.intentMode === "intent-api"
+    ? await parseNaturalLanguageIntentWithModel(request.naturalLanguage, modelConfigs.intent, parserOptions)
+    : await parseNaturalLanguageIntent(request.naturalLanguage, parserOptions);
   broadcast({
     kind: "intent_ir_ready",
     runId,
@@ -279,11 +326,10 @@ export async function runSyntheticTask(
   const startedAtMs = performance.now();
   const controlElapsed = () => Math.round((performance.now() - startedAtMs) * 100) / 100;
   const du = makeDu(request.scenario === "du_timeout" ? 1_200 : 35);
-  const remoteModelConfig = options.remoteModelConfig ?? modelConfigFromEnvironment();
   const resourceMonitor = new InferenceResourceMonitor({
     backend: request.mode,
-    modelId: modelIdForMode(request.mode, remoteModelConfig),
-    capacityModelId: remoteModelConfig.modelId,
+    modelId: modelIdForMode(request.mode, modelConfigs.station),
+    capacityModelId: modelConfigs.station.modelId,
     inferenceBudgetMs: parsed.intent.execution.maxInferenceMs,
     sampleIntervalMs: options.resourceSampleIntervalMs,
     onSample: (sample) => broadcast({ kind: "resource_sample", runId, sample }),
@@ -292,7 +338,7 @@ export async function runSyntheticTask(
   let unsubscribe: () => void = () => undefined;
 
   try {
-    const decisionAgent = makeAgent(request, remoteModelConfig, (event) => {
+    const decisionAgent = makeAgent(request, modelConfigs.station, (event) => {
       resourceMonitor.recordPiUsage(event);
       broadcast({
         kind: "event",
@@ -398,6 +444,10 @@ function makeDu(ackDelayMs: number): DuSimulator {
 export function parseRunRequest(value: unknown): { ok: true; value: RunRequest } | { ok: false; error: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "request body must be an object" };
   const record = value as Record<string, unknown>;
+  const intentMode = record.intentMode ?? "synthetic";
+  if (intentMode !== "synthetic" && intentMode !== "intent-api") {
+    return { ok: false, error: "intentMode must be synthetic or intent-api" };
+  }
   if (record.mode !== "rules" && record.mode !== "pi-faux" && record.mode !== "pi-api") {
     return { ok: false, error: "mode must be rules, pi-faux, or pi-api" };
   }
@@ -417,6 +467,7 @@ export function parseRunRequest(value: unknown): { ok: true; value: RunRequest }
   return {
     ok: true,
     value: {
+      intentMode,
       mode: record.mode,
       scenario: record.scenario,
       naturalLanguage: record.naturalLanguage.trim(),
@@ -427,7 +478,7 @@ export function parseRunRequest(value: unknown): { ok: true; value: RunRequest }
 
 export function parseModelConfigUpdate(
   value: unknown,
-  current: RemoteModelConfig = modelConfigFromEnvironment(),
+  current: RemoteModelConfig = modelConfigFromEnvironment("station"),
 ): { ok: true; value: RemoteModelConfig } | { ok: false; error: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ok: false, error: "model configuration must be an object" };
@@ -485,8 +536,9 @@ export function parseModelConfigUpdate(
   };
 }
 
-export function publicModelConfig(config: RemoteModelConfig): PublicRemoteModelConfig {
+export function publicModelConfig(role: ModelRole, config: RemoteModelConfig): PublicRemoteModelConfig {
   return {
+    role,
     configured: Boolean(config.baseUrl),
     baseUrl: config.baseUrl,
     modelId: config.modelId,
@@ -496,16 +548,27 @@ export function publicModelConfig(config: RemoteModelConfig): PublicRemoteModelC
   };
 }
 
-function modelConfigFromEnvironment(): RemoteModelConfig {
-  const baseUrl = process.env.RAN_MODEL_BASE_URL?.trim() ?? "";
-  const modelId = process.env.RAN_MODEL_ID?.trim() || DEFAULT_REMOTE_MODEL_ID;
-  const apiKey = process.env.RAN_MODEL_API_KEY?.trim() || undefined;
+function modelConfigFromEnvironment(role: ModelRole): RemoteModelConfig {
+  const baseUrl = role === "intent"
+    ? process.env.RAN_INTENT_MODEL_BASE_URL?.trim() ?? ""
+    : process.env.RAN_STATION_MODEL_BASE_URL?.trim() ?? process.env.RAN_MODEL_BASE_URL?.trim() ?? "";
+  const modelId = role === "intent"
+    ? process.env.RAN_INTENT_MODEL_ID?.trim() || DEFAULT_INTENT_MODEL_ID
+    : process.env.RAN_STATION_MODEL_ID?.trim() || process.env.RAN_MODEL_ID?.trim() || DEFAULT_STATION_MODEL_ID;
+  const apiKey = role === "intent"
+    ? process.env.RAN_INTENT_MODEL_API_KEY?.trim() || undefined
+    : process.env.RAN_STATION_MODEL_API_KEY?.trim() || process.env.RAN_MODEL_API_KEY?.trim() || undefined;
   return {
     baseUrl,
     modelId,
     apiKey,
     source: baseUrl ? "environment" : "default",
   };
+}
+
+function parseModelRole(value: unknown): ModelRole | undefined {
+  if (value === undefined || value === null || value === "") return "station";
+  return value === "intent" || value === "station" ? value : undefined;
 }
 
 function modelIdForMode(mode: RunMode, remoteModelConfig: RemoteModelConfig): string {

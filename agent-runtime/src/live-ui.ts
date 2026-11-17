@@ -37,7 +37,7 @@ export function renderLiveUi(): string {
     .status[data-state="running"] .dot { background: var(--cyan); animation: pulse 1s infinite; }
     .status[data-state="safe_timeout"] .dot, .status[data-state="rejected"] .dot { background: var(--amber); }
     @keyframes pulse { 50% { opacity: .35; } }
-    .controls { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; margin: 28px 0 16px; }
+    .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 12px; margin: 28px 0 16px; }
     .control { display: grid; gap: 7px; }
     .intent-control { grid-column: 1 / -1; }
     label { color: var(--muted); font-size: 12px; }
@@ -48,12 +48,30 @@ export function renderLiveUi(): string {
     select:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid rgba(5, 141, 163, .2); outline-offset: 2px; }
     button { align-self: end; min-width: 160px; border-color: #057d91; background: linear-gradient(135deg, #079bb2, #057d91); color: #ffffff; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(5, 125, 145, .18); }
     button:disabled { opacity: .45; cursor: wait; }
-    .api-config { margin: 0 0 16px; border: 1px solid #b9dde2; border-radius: 16px; padding: 16px; background: rgba(247, 252, 252, .96); box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
+    .dual-model-section { margin: 0 0 16px; border: 1px solid #b9dde2; border-radius: 18px; padding: 16px; background: rgba(247, 252, 252, .96); box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
+    .dual-model-head { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; margin-bottom: 12px; }
+    .dual-model-head h2 { margin: 0; font-size: 16px; }
+    .dual-model-head span { color: var(--muted); font-size: 10px; }
+    .dual-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(170px, .55fr) auto minmax(0, 1fr); gap: 10px; align-items: stretch; margin-bottom: 12px; }
+    .flow-agent, .flow-contract { min-width: 0; border: 1px solid #d8e7e9; border-radius: 13px; padding: 12px; background: #ffffff; }
+    .flow-agent[data-role="intent"] { border-left: 4px solid #1674a8; }
+    .flow-agent[data-role="station"] { border-left: 4px solid #7554c9; }
+    .flow-agent span, .flow-contract span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    .flow-agent strong, .flow-contract strong { display: block; margin-top: 5px; font-size: 13px; overflow-wrap: anywhere; }
+    .flow-agent small, .flow-contract small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.45; white-space: pre-line; }
+    .flow-contract { text-align: center; background: #f8fbfc; }
+    .flow-arrow { align-self: center; color: #789198; font-weight: 800; }
+    .model-configs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .api-config { min-width: 0; border: 1px solid #d7e5e7; border-radius: 14px; padding: 14px; background: #ffffff; }
+    .api-config[data-role="intent"] { box-shadow: inset 3px 0 #1674a8; }
+    .api-config[data-role="station"] { box-shadow: inset 3px 0 #7554c9; }
     .api-config-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
     .api-config-head h2 { margin: 0; font-size: 15px; }
     .api-config-state { display: inline-flex; border: 1px solid #edcc98; border-radius: 999px; padding: 5px 9px; background: #fff7e9; color: #89550a; font-size: 10px; font-weight: 800; }
     .api-config-state[data-configured="true"] { border-color: #9dd9be; background: #edf9f3; color: #126a4c; }
-    .api-config-grid { display: grid; grid-template-columns: minmax(260px, 1.35fr) minmax(190px, .85fr) minmax(190px, .85fr) auto; gap: 10px; align-items: end; }
+    .api-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+    .api-config-grid .endpoint { grid-column: 1 / -1; }
+    .api-config-grid button { grid-column: 1 / -1; }
     .api-config-message { min-height: 16px; margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .api-config-message[data-state="error"] { color: var(--red); }
     .api-config-message[data-state="success"] { color: var(--green); }
@@ -135,6 +153,10 @@ export function renderLiveUi(): string {
       button { grid-column: 1 / -1; }
       .api-config-grid { grid-template-columns: 1fr; }
       .api-config-grid button { grid-column: 1; }
+      .api-config-grid .endpoint { grid-column: 1; }
+      .dual-flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); text-align: center; }
+      .model-configs { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
       .resource-grid { grid-template-columns: 1fr; }
       .resource-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -163,26 +185,50 @@ export function renderLiveUi(): string {
         <label for="naturalLanguage">运营商自然语言意图 / Operator intent</label>
         <textarea id="naturalLanguage" maxlength="1200">请将 gnb-001 的 cell-01 设为低功耗模式，目标降低能耗 15%，但下行 P95 吞吐不得低于 50 Mbps，RRC 成功率不得低于 99%，并在 1 秒内完成执行确认。</textarea>
       </div>
-      <div class="control"><label for="mode">决策 Agent / Decision agent</label><select id="mode"><option value="pi-faux">Pi Agent · 仿真提供器 / faux provider（无模型 / no model）</option><option value="pi-api" id="apiModeOption">Pi Agent · 远端模型 API / Remote model API</option><option value="rules">规则基线 / Rules baseline</option></select></div>
+      <div class="control"><label for="intentMode">① 网管 Intent Agent / Management</label><select id="intentMode"><option value="synthetic">合成解析器 / Synthetic（无模型 / no model）</option><option value="intent-api" id="intentApiModeOption">远端大模型 API / Remote LLM（未配置）</option></select></div>
+      <div class="control"><label for="mode">② 基站 Pi Agent / Station</label><select id="mode"><option value="pi-faux">Pi Agent · faux（无模型 / no model）</option><option value="pi-api" id="stationApiModeOption">Pi Agent · 远端小模型 API / Remote small model</option><option value="rules">规则基线 / Rules baseline</option></select></div>
       <div class="control"><label for="scenario">实验场景 / Scenario</label><select id="scenario"><option value="success">确认成功 / ACK success</option><option value="model_timeout">模型超时 / Model timeout → SAFE_NOOP</option><option value="du_timeout">Function 超时 / timeout → SAFE_NOOP</option></select></div>
       <div class="control"><label for="demoPace">演示节奏 / Demo pace（不计入 SLA）</label><select id="demoPace"><option value="0">实时 / Real-time</option><option value="120">快速 / Fast · 120 ms</option><option value="300" selected>标准 / Standard · 300 ms</option><option value="700">慢速 / Slow · 700 ms</option></select></div>
       <button type="button" id="run">解析意图并运行 / Parse &amp; run</button>
     </section>
 
-    <section class="api-config" aria-labelledby="apiConfigTitle">
-      <div class="api-config-head"><h2 id="apiConfigTitle">模型 API 配置 / Model API setup</h2><span class="api-config-state" id="apiConfigState" data-configured="false">未配置 / Not configured</span></div>
-      <div class="api-config-grid">
-        <div class="control"><label for="apiBaseUrl">OpenAI-compatible Base URL</label><input id="apiBaseUrl" type="url" inputmode="url" spellcheck="false" placeholder="模型服务的 /v1 endpoint" /></div>
-        <div class="control"><label for="apiModelId">模型 ID / Model ID</label><input id="apiModelId" type="text" spellcheck="false" value="Qwen/Qwen3-0.6B" /></div>
-        <div class="control"><label for="apiKey">API Key（可选 / optional）</label><input id="apiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="仅保存在当前进程内存" /></div>
-        <button type="button" id="saveApiConfig">保存配置 / Apply</button>
+    <section class="dual-model-section" aria-labelledby="dualModelTitle">
+      <div class="dual-model-head"><h2 id="dualModelTitle">双模型 Agent 通道 / Two-model agent path</h2><span>两套配置、两段推理、一个受控 Intent IR / independent configs and inference</span></div>
+      <div class="dual-flow">
+        <div class="flow-agent" data-role="intent"><span>① 网管侧 / Management</span><strong>Intent Agent · 大模型 / Large model</strong><small id="intentLaneModel">当前：合成解析器，无模型推理<br />Natural language → Intent semantics</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-contract"><span>受控契约 / Contract</span><strong>Intent IR v0.1</strong><small>Schema + validity + action allowlist</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-agent" data-role="station"><span>② 基站侧 / Station</span><strong>Pi Agent · 轻量小模型 / ≈0.8B</strong><small id="stationLaneModel">当前：faux 响应，无模型推理<br />Intent IR → Tool Call</small></div>
       </div>
-      <p class="api-config-message" id="apiConfigMessage">API Key 仅发送到本机控制台并保存在当前服务进程内存；不会写入文件、日志或 Git。<br /><span lang="en">The key stays in this local server process only; it is never written to files, logs, or Git.</span></p>
+      <div class="model-configs">
+        <article class="api-config" data-role="intent" aria-labelledby="intentApiConfigTitle">
+          <div class="api-config-head"><h2 id="intentApiConfigTitle">① 网管大模型 API / Management LLM</h2><span class="api-config-state" id="intentApiConfigState" data-configured="false">未配置 / Not configured</span></div>
+          <div class="api-config-grid">
+            <div class="control endpoint"><label for="intentApiBaseUrl">OpenAI-compatible Base URL</label><input id="intentApiBaseUrl" type="url" inputmode="url" spellcheck="false" placeholder="网管侧大模型 /v1 endpoint" /></div>
+            <div class="control"><label for="intentApiModelId">大模型 ID / Large model ID</label><input id="intentApiModelId" type="text" spellcheck="false" value="Qwen/Qwen3-8B" /></div>
+            <div class="control"><label for="intentApiKey">API Key（可选）</label><input id="intentApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="仅当前进程内存" /></div>
+            <button type="button" id="saveIntentApiConfig">保存网管模型配置 / Apply management model</button>
+          </div>
+          <p class="api-config-message" id="intentApiConfigMessage">负责自然语言 → 结构化 Intent IR；模型输出仍须通过确定性 Schema 校验。</p>
+        </article>
+        <article class="api-config" data-role="station" aria-labelledby="stationApiConfigTitle">
+          <div class="api-config-head"><h2 id="stationApiConfigTitle">② 基站小模型 API / Station model</h2><span class="api-config-state" id="stationApiConfigState" data-configured="false">未配置 / Not configured</span></div>
+          <div class="api-config-grid">
+            <div class="control endpoint"><label for="stationApiBaseUrl">OpenAI-compatible Base URL</label><input id="stationApiBaseUrl" type="url" inputmode="url" spellcheck="false" placeholder="基站侧约 0.8B 模型 /v1 endpoint" /></div>
+            <div class="control"><label for="stationApiModelId">小模型 ID / Small model ID</label><input id="stationApiModelId" type="text" spellcheck="false" value="Qwen/Qwen3-0.6B" /></div>
+            <div class="control"><label for="stationApiKey">API Key（可选）</label><input id="stationApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="仅当前进程内存" /></div>
+            <button type="button" id="saveStationApiConfig">保存基站模型配置 / Apply station model</button>
+          </div>
+          <p class="api-config-message" id="stationApiConfigMessage">负责 Intent IR → Pi Tool Call；目标是基站侧 1 秒内完成 Function ACK。</p>
+        </article>
+      </div>
+      <p class="capacity-note">两个 Key 相互独立，只保存在当前本地服务进程内存；不会写入文件、日志、浏览器存储或 Git。<br /><span lang="en">Both keys are independent and process-memory only; they are never persisted or returned to the browser.</span></p>
     </section>
 
     <div class="intent-grid">
       <section class="intent-panel" aria-labelledby="parseTraceTitle">
-        <div class="intent-panel-head"><h2 id="parseTraceTitle">意图解析轨迹 / Parsing trace</h2><span id="parseState">等待输入 / Waiting</span></div>
+        <div class="intent-panel-head"><h2 id="parseTraceTitle">① 网管 Intent Agent：自然语言 → Intent IR</h2><span id="parseState">等待输入 / Waiting</span></div>
         <div class="parse-trace" id="parseTrace"><div class="intent-placeholder">运行任务后逐步展示解析阶段与输出。<br /><span lang="en">Run a task to see each parsing stage and output.</span></div></div>
       </section>
       <section class="intent-panel" aria-labelledby="intentIrTitle">
@@ -199,7 +245,7 @@ export function renderLiveUi(): string {
 
     <div class="resource-grid">
       <section class="resource-card" aria-labelledby="resourceLiveTitle">
-        <div class="resource-head"><h2 id="resourceLiveTitle">运行资源实测 / Live resources</h2><span id="resourceScope">Agent 客户端进程 / client process</span></div>
+        <div class="resource-head"><h2 id="resourceLiveTitle">② 基站阶段运行资源 / Station-stage resources</h2><span id="resourceScope">Agent 客户端进程 / client process</span></div>
         <div class="resource-metrics">
           <div class="resource-metric"><span>阶段 / Phase</span><strong id="resourcePhase">—</strong></div>
           <div class="resource-metric"><span>CPU 峰值 / Peak</span><strong id="resourceCpu">—</strong></div>
@@ -216,7 +262,7 @@ export function renderLiveUi(): string {
       </section>
 
       <section class="resource-card" aria-labelledby="capacityTitle">
-        <div class="resource-head"><h2 id="capacityTitle">芯片容量规划 / Capacity estimate</h2><span>分析估算，非本次实测 / analytical</span></div>
+        <div class="resource-head"><h2 id="capacityTitle">② 基站小模型芯片容量规划 / Station capacity</h2><span>分析估算，非本次实测 / analytical</span></div>
         <div class="resource-metrics">
           <div class="resource-metric"><span>INT4 算力 / TOPS</span><strong id="capacityTops">—</strong></div>
           <div class="resource-metric"><span>内存带宽 / Bandwidth</span><strong id="capacityBandwidth">—</strong></div>
@@ -231,7 +277,7 @@ export function renderLiveUi(): string {
     </div>
 
     <section class="call-panel" aria-labelledby="piTraceTitle">
-      <div class="resource-head"><h2 id="piTraceTitle">Pi Agent 执行与调用过程 / Execution trace</h2><span class="trace-badge" id="piTraceBadge" data-source="idle">等待任务 / Waiting</span></div>
+      <div class="resource-head"><h2 id="piTraceTitle">② 基站 Pi Agent：Intent IR → Tool Call / Execution trace</h2><span class="trace-badge" id="piTraceBadge" data-source="idle">等待任务 / Waiting</span></div>
       <p class="capacity-note">展示模型输入摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail 和 Function ACK；不展示隐藏思维链。<br /><span lang="en">Shows the model request summary, tool schemas, actual tool-call arguments, proposal, guardrail, and Function ACK—never hidden reasoning.</span></p>
       <div class="call-trace" id="piTrace"><div class="intent-placeholder">运行任务后显示真实框架调用轨迹；只有 Remote API 模式包含真实模型推理。<br /><span lang="en">Run a task to inspect the framework trace; only Remote API mode performs real model inference.</span></div></div>
     </section>
@@ -241,8 +287,8 @@ export function renderLiveUi(): string {
         <h2>执行拓扑 / Execution topology</h2>
         <div class="topology">
           <div class="node" id="nodeInput"><strong>自然语言 / Natural language</strong><small>运营请求 / operator request</small></div><div class="arrow">→</div>
-          <div class="node" id="nodeIntent"><strong>意图 Agent / Intent Agent</strong><small>解析并生成 Intent IR / parse</small></div><div class="arrow">→</div>
-          <div class="node" id="nodeAgent"><strong>基站 Agent / Station Agent</strong><small>单个提案 / one proposal</small></div><div class="arrow">→</div>
+          <div class="node" id="nodeIntent"><strong>网管 Intent Agent / 大模型</strong><small>Natural language → Intent IR</small></div><div class="arrow">→</div>
+          <div class="node" id="nodeAgent"><strong>基站 Pi Agent / ≈0.8B</strong><small>Intent IR → one proposal</small></div><div class="arrow">→</div>
           <div class="node" id="nodeDu"><strong>基站 Function / Station Function</strong><small>确定性确认 / deterministic ACK</small></div>
         </div>
         <div class="summary">
@@ -289,24 +335,44 @@ export function renderLiveUi(): string {
     const rssBarLabel = $('rssBarLabel');
     const piTrace = $('piTrace');
     const piTraceBadge = $('piTraceBadge');
+    const intentModeSelect = $('intentMode');
     const modeSelect = $('mode');
-    const apiBaseUrl = $('apiBaseUrl');
-    const apiModelId = $('apiModelId');
-    const apiKey = $('apiKey');
-    const saveApiConfig = $('saveApiConfig');
-    const apiConfigState = $('apiConfigState');
-    const apiConfigMessage = $('apiConfigMessage');
+    const configUi = {
+      intent: {
+        baseUrl: $('intentApiBaseUrl'),
+        modelId: $('intentApiModelId'),
+        apiKey: $('intentApiKey'),
+        save: $('saveIntentApiConfig'),
+        state: $('intentApiConfigState'),
+        message: $('intentApiConfigMessage'),
+        defaultModelId: 'Qwen/Qwen3-8B'
+      },
+      station: {
+        baseUrl: $('stationApiBaseUrl'),
+        modelId: $('stationApiModelId'),
+        apiKey: $('stationApiKey'),
+        save: $('saveStationApiConfig'),
+        state: $('stationApiConfigState'),
+        message: $('stationApiConfigMessage'),
+        defaultModelId: 'Qwen/Qwen3-0.6B'
+      }
+    };
     let piTraceSequence = 0;
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
-    let modelConfig = { configured: false, modelId: 'Qwen/Qwen3-0.6B', apiKeyConfigured: false };
+    const modelConfigs = {
+      intent: { configured: false, modelId: 'Qwen/Qwen3-8B', apiKeyConfigured: false },
+      station: { configured: false, modelId: 'Qwen/Qwen3-0.6B', apiKeyConfigured: false }
+    };
     let running = false;
 
     fetch('/api/health').then((response) => response.json()).then((health) => {
       if (health.capacityEstimate) renderCapacity(health.capacityEstimate);
     }).catch(() => undefined);
-    fetch('/api/model-config').then((response) => response.json()).then(renderModelConfig).catch(() => {
-      apiConfigMessage.dataset.state = 'error';
-      apiConfigMessage.textContent = '无法读取模型 API 配置 / Could not load model API configuration';
+    ['intent', 'station'].forEach((role) => {
+      fetch('/api/model-config?role=' + role).then((response) => response.json()).then((config) => renderModelConfig(role, config)).catch(() => {
+        configUi[role].message.dataset.state = 'error';
+        configUi[role].message.textContent = '无法读取模型 API 配置 / Could not load model API configuration';
+      });
     });
 
     const source = new EventSource('/api/events');
@@ -352,16 +418,23 @@ export function renderLiveUi(): string {
       return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
     }
 
-    saveApiConfig.addEventListener('click', async () => {
+    configUi.intent.save.addEventListener('click', () => saveModelConfig('intent'));
+    configUi.station.save.addEventListener('click', () => saveModelConfig('station'));
+    intentModeSelect.addEventListener('change', renderSelectedModelLanes);
+    modeSelect.addEventListener('change', renderSelectedModelLanes);
+
+    async function saveModelConfig(role) {
       if (running) return;
-      saveApiConfig.disabled = true;
-      apiConfigMessage.dataset.state = '';
-      apiConfigMessage.textContent = '正在保存到当前服务进程… / Applying to this server process…';
+      const ui = configUi[role];
+      ui.save.disabled = true;
+      ui.message.dataset.state = '';
+      ui.message.textContent = '正在保存到当前服务进程… / Applying to this server process…';
       const payload = {
-        baseUrl: apiBaseUrl.value.trim(),
-        modelId: apiModelId.value.trim()
+        role,
+        baseUrl: ui.baseUrl.value.trim(),
+        modelId: ui.modelId.value.trim()
       };
-      if (apiKey.value.trim()) payload.apiKey = apiKey.value.trim();
+      if (ui.apiKey.value.trim()) payload.apiKey = ui.apiKey.value.trim();
       try {
         const response = await fetch('/api/model-config', {
           method: 'POST',
@@ -370,45 +443,73 @@ export function renderLiveUi(): string {
         });
         const body = await response.json().catch(() => ({ error: response.statusText }));
         if (!response.ok) throw new Error(body.error || 'Configuration rejected');
-        renderModelConfig(body);
-        modeSelect.value = 'pi-api';
-        apiConfigMessage.dataset.state = 'success';
-        apiConfigMessage.textContent = '配置已应用到当前进程；现在可运行 Remote API。Key 不会持久化。 / Applied for this process; ready for Remote API. The key is not persisted.';
-        setStatus('ready', '模型 API 已配置 / Model API configured');
+        renderModelConfig(role, body);
+        if (role === 'intent') intentModeSelect.value = 'intent-api';
+        else modeSelect.value = 'pi-api';
+        renderSelectedModelLanes();
+        ui.message.dataset.state = 'success';
+        ui.message.textContent = '配置已应用到当前进程；Key 不会持久化。 / Applied for this process; the key is not persisted.';
+        setStatus('ready', role === 'intent' ? '网管大模型已配置 / Management LLM configured' : '基站小模型已配置 / Station model configured');
       } catch (error) {
-        apiConfigMessage.dataset.state = 'error';
-        apiConfigMessage.textContent = error instanceof Error ? error.message : String(error);
+        ui.message.dataset.state = 'error';
+        ui.message.textContent = error instanceof Error ? error.message : String(error);
         setStatus('rejected', '模型 API 配置失败 / Configuration rejected');
       } finally {
-        apiKey.value = '';
-        saveApiConfig.disabled = false;
+        ui.apiKey.value = '';
+        ui.save.disabled = false;
       }
-    });
+    }
 
-    function renderModelConfig(config) {
-      modelConfig = config;
-      apiBaseUrl.value = config.baseUrl || '';
-      apiModelId.value = config.modelId || 'Qwen/Qwen3-0.6B';
-      apiKey.value = '';
-      apiKey.placeholder = config.apiKeyConfigured
+    function renderModelConfig(role, config) {
+      modelConfigs[role] = config;
+      const ui = configUi[role];
+      ui.baseUrl.value = config.baseUrl || '';
+      ui.modelId.value = config.modelId || ui.defaultModelId;
+      ui.apiKey.value = '';
+      ui.apiKey.placeholder = config.apiKeyConfigured
         ? '已配置；留空保持 / configured; blank keeps it'
         : '可选；仅当前进程内存 / optional; memory only';
-      apiConfigState.dataset.configured = String(Boolean(config.configured));
-      apiConfigState.textContent = config.configured
+      ui.state.dataset.configured = String(Boolean(config.configured));
+      ui.state.textContent = config.configured
         ? '已配置 / Configured · ' + config.modelId
         : '未配置 / Not configured';
-      $('apiModeOption').textContent = config.configured
-        ? 'Pi Agent · 远端 API / Remote · ' + config.modelId
-        : 'Pi Agent · 远端模型 API / Remote API（未配置 / not configured）';
+      if (role === 'intent') {
+        $('intentApiModeOption').textContent = config.configured
+          ? '远端大模型 / Remote LLM · ' + config.modelId
+          : '远端大模型 API / Remote LLM（未配置）';
+      } else {
+        $('stationApiModeOption').textContent = config.configured
+          ? 'Pi Agent · 远端小模型 / Remote · ' + config.modelId
+          : 'Pi Agent · 远端小模型 API / Remote（未配置）';
+      }
+      renderSelectedModelLanes();
+    }
+
+    function renderSelectedModelLanes() {
+      $('intentLaneModel').textContent = intentModeSelect.value === 'intent-api'
+        ? (modelConfigs.intent.configured ? '当前：真实 API · ' + modelConfigs.intent.modelId : '当前：远端大模型未配置') + '\\nNatural language → Intent IR'
+        : '当前：合成解析器，无模型推理\\nNatural language → Intent IR';
+      $('stationLaneModel').textContent = modeSelect.value === 'pi-api'
+        ? (modelConfigs.station.configured ? '当前：真实 API · ' + modelConfigs.station.modelId : '当前：远端小模型未配置') + '\\nIntent IR → Tool Call'
+        : modeSelect.value === 'pi-faux'
+          ? '当前：faux 响应，无模型推理\\nIntent IR → Tool Call'
+          : '当前：规则基线，无模型推理\\nIntent IR → Action';
     }
 
     runButton.addEventListener('click', async () => {
       if (running) return;
-      if (modeSelect.value === 'pi-api' && !modelConfig.configured) {
-        setStatus('rejected', '请先配置模型 API / Configure the model API first');
-        apiConfigMessage.dataset.state = 'error';
-        apiConfigMessage.textContent = 'Remote API 模式需要 Base URL；请在下方保存配置。 / Remote API requires a Base URL; apply it below first.';
-        apiBaseUrl.focus();
+      if (intentModeSelect.value === 'intent-api' && !modelConfigs.intent.configured) {
+        setStatus('rejected', '请先配置网管大模型 / Configure the management LLM');
+        configUi.intent.message.dataset.state = 'error';
+        configUi.intent.message.textContent = '网管大模型模式需要独立的 Base URL。 / Management LLM mode requires its own Base URL.';
+        configUi.intent.baseUrl.focus();
+        return;
+      }
+      if (modeSelect.value === 'pi-api' && !modelConfigs.station.configured) {
+        setStatus('rejected', '请先配置基站小模型 / Configure the station model');
+        configUi.station.message.dataset.state = 'error';
+        configUi.station.message.textContent = '基站 Remote API 模式需要独立的 Base URL。 / Station Remote API requires its own Base URL.';
+        configUi.station.baseUrl.focus();
         return;
       }
       runButton.disabled = true;
@@ -417,6 +518,7 @@ export function renderLiveUi(): string {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          intentMode: intentModeSelect.value,
           mode: modeSelect.value,
           scenario: $('scenario').value,
           naturalLanguage: naturalLanguage.value,
@@ -484,9 +586,19 @@ export function renderLiveUi(): string {
       intentJson.textContent = formatStructuredValue(intent);
       const parseMs = Number(message.parseElapsedMs);
       const traceMs = Number(message.traceElapsedMs);
-      parseState.textContent = Number.isFinite(parseMs)
-        ? 'parse ' + formatMs(parseMs) + (Number.isFinite(traceMs) ? ' · trace ' + formatMs(traceMs) : '')
-        : 'Intent IR 已生成 / ready';
+      const parser = message.parser || {};
+      const usage = parser.usage;
+      const source = parser.modelId
+        ? '真实大模型 / Real LLM · ' + parser.modelId
+          + (Number.isFinite(Number(parser.modelDurationMs)) ? ' · model ' + formatMs(Number(parser.modelDurationMs)) : '')
+          + (usage ? ' · tokens ' + usage.inputTokens + '/' + usage.outputTokens : '')
+        : '合成解析器 / Synthetic · no model';
+      parseState.textContent = source + (Number.isFinite(parseMs)
+        ? ' · parse ' + formatMs(parseMs) + (Number.isFinite(traceMs) ? ' · trace ' + formatMs(traceMs) : '')
+        : '');
+      $('intentLaneModel').textContent = parser.modelId
+        ? '本次：真实 API · ' + parser.modelId + '\\nNatural language → Intent IR'
+        : '本次：合成解析器，无模型推理\\nNatural language → Intent IR';
       setStatus('running', '结构化意图已生成 / Structured intent ready');
       setActive('nodeIntent');
     }
@@ -509,7 +621,7 @@ export function renderLiveUi(): string {
       elapsed.textContent = '0 ms';
       fill.style.width = '0%';
       reserve.textContent = '剩余 / Reserve 1,000 ms';
-      phase.textContent = message.mode + ' · ' + message.scenario;
+      phase.textContent = message.intentMode + ' → ' + message.mode + ' · ' + message.scenario;
       terminal.textContent = 'RUNNING';
       action.textContent = '—';
       version.textContent = '—';
@@ -519,12 +631,22 @@ export function renderLiveUi(): string {
       traceWaiting.className = 'intent-placeholder';
       traceWaiting.textContent = '等待 Pi Agent 与 Runtime 事件… / Waiting for Pi and Runtime events…';
       piTrace.append(traceWaiting);
-      piTraceBadge.dataset.source = message.modelResponseSource || 'no_model';
-      piTraceBadge.textContent = message.modelResponseSource === 'remote_api'
-        ? '真实远端模型 / Real remote model · ' + message.modelId
-        : message.modelResponseSource === 'preset_fixture'
+      const stationSource = message.stationResponseSource || message.modelResponseSource || 'no_model';
+      const stationModelId = message.stationModelId || message.modelId;
+      piTraceBadge.dataset.source = stationSource;
+      piTraceBadge.textContent = stationSource === 'remote_api'
+        ? '真实基站小模型 / Real station model · ' + stationModelId
+        : stationSource === 'preset_fixture'
           ? '预置响应 / FAUX fixture · no model'
           : '规则路径 / Rules · no model';
+      $('intentLaneModel').textContent = message.intentResponseSource === 'remote_api'
+        ? '本次：真实 API · ' + message.intentModelId + '\\nNatural language → Intent IR'
+        : '本次：合成解析器，无模型推理\\nNatural language → Intent IR';
+      $('stationLaneModel').textContent = stationSource === 'remote_api'
+        ? '本次：真实 API · ' + stationModelId + '\\nIntent IR → Tool Call'
+        : stationSource === 'preset_fixture'
+          ? '本次：faux 响应，无模型推理\\nIntent IR → Tool Call'
+          : '本次：规则基线，无模型推理\\nIntent IR → Action';
       liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
       resourcePhase.textContent = '启动 / starting';
       resourceCpu.textContent = '0%';

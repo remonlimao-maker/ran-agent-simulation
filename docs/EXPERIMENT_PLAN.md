@@ -6,6 +6,8 @@
 
 模型“能执行”不等于实验成功。最小可接受结果必须同时满足：任务正确、安全、按时、资源可承受。
 
+系统包含两个独立模型角色：网管侧大模型负责 `自然语言 → Intent IR`，基站侧约 0.8B 小模型负责 `Intent IR → Tool Call`。本计划的 1 秒 SLA 和芯片实验只针对第二段；网管大模型使用独立数据集评测 Intent schema valid rate、字段准确率、澄清/拒绝能力、token 和 `T_intent`。
+
 ## 假设
 
 - H1：对完整、无歧义的结构化 Intent，规则状态机已经接近最优，0.8B 的价值主要来自异常映射和未见表达。
@@ -16,6 +18,9 @@
 ## 计时边界
 
 ```text
+T_intent (management, reported separately):
+Natural language -> large-model structured call -> validated Intent IR
+
 T_ack:
 Intent received
  -> schema/auth/freshness

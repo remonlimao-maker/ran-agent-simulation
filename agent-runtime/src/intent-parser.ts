@@ -5,6 +5,8 @@ import type { StationIntent } from "./types.ts";
 
 export type IntentParseStageName =
   | "NATURAL_LANGUAGE_RECEIVED"
+  | "INTENT_MODEL_REQUEST_BUILT"
+  | "INTENT_MODEL_TOOL_CALL"
   | "TARGET_EXTRACTED"
   | "OBJECTIVE_NORMALIZED"
   | "CONSTRAINTS_MAPPED"

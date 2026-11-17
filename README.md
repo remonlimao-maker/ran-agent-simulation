@@ -8,7 +8,7 @@
 2. 在限定上下文、工具数量、量化方式和算力后，能否稳定满足 P95 1 秒 ACTION_ACK？
 3. 如何把模型错误、超时和不确定性转换为拒绝或 SAFE_NOOP，而不是错误执行？
 
-> 当前仓库已实现可观测的自然语言解析演示、版本化 Intent IR、轻量 Agent Runtime、确定性安全核、规则/Pi 实验路径、模拟 Function、事件流和可视化控制台。网管侧真实大模型解析效果、真实 0.8B 性能和真实网络闭环仍是待验证项。
+> 当前仓库已实现两条独立模型路径：网管侧大模型将自然语言转换为 Intent IR，基站侧约 0.8B Pi Agent 将 Intent IR 转换为 Tool Call；两者也都有无模型基线。真实服务上的解析效果、真实 0.8B 性能和真实网络闭环仍是待验证项。
 
 ## 核心设计原则
 
@@ -27,7 +27,7 @@
 
 | 层次 | 主要职责 | 当前状态 |
 |---|---|---|
-| 网管 Intent Agent | 将自然语言目标转换为结构化 Intent IR，并输出可审计解析阶段 | 确定性演示解析器已实现；真实大模型路径待接入 |
+| 网管 Intent Agent | 大模型将自然语言目标转换为结构化 Intent IR，并输出可审计解析阶段 | 合成解析器与独立远端大模型 API 路径已实现；真实效果待测 |
 | Agent Runtime | 管理任务生命周期、总时限、取消、事件和结果 | 已实现 |
 | Rules / Pi Agent | 在相同输入和工具约束下生成 Action Proposal | 规则、Pi faux、远端 API 和本地模型路径已实现 |
 | Deterministic Guardrail | 校验 Intent、状态、动作、参数、范围、版本与预算 | 已实现 |
@@ -126,16 +126,16 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 - 推理与执行 deadline、取消和迟到结果丢弃。
 - Intent 时效、重放、状态约束、动作范围和参数校验。
 - 规则基线、Pi faux、外部本地模型连接路径和 JSON/CSV 实验结果。
-- OpenAI-compatible 远端模型 API 模式；界面可配置 endpoint、模型和 API key，key 仅保留在当前本地服务进程内存，也可改用服务端环境变量。
+- 网管大模型与基站小模型各自独立的 OpenAI-compatible API 配置、模式选择和来源标记；两个 key 只保留在当前本地服务进程内存，也可改用服务端环境变量。
 - 推理期间 Agent CPU/RSS/Heap、token 使用和测量来源标记。
 - 约 0.8B INT4 的 TOPS、RAM、双槽存储与内存带宽可审计容量估算。
 - Pi Agent 请求摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail、Function dispatch 与 ACK 的完整调用轨迹；faux 与真实 API 明确区分。
-- 自然语言解析的 8 阶段可审计轨迹、完整 Intent IR JSON 和独立解析耗时。
+- 网管大模型的强制结构化 Tool Call、token/耗时，以及合成解析器的 8 阶段基线；两者都输出完整 Intent IR 并通过相同确定性 Schema 校验。
 - 有序 Runtime/Pi 事件、SSE 实时控制台与观察器故障隔离。
 
 尚未完成：
 
-- 网管侧真实大模型的自然语言到 Intent IR 路径、测试集和效果评测。
+- 网管侧真实大模型的领域测试集、准确率/鲁棒性评测和模型选型结论。
 - Intent 签名验证以及跨进程、跨重启的持久化防重放。
 - 真实 0.8B INT4/INT8 在目标硬件上的准确率、时延、VRAM/RSS 和功耗测量。
 - 真实执行适配器、KPI 效果闭环和回滚验证。
@@ -151,13 +151,16 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
     npm test
     npm run live
 
-打开 http://127.0.0.1:4175，输入中文或英文任务后，可查看意图解析、Intent IR、工具调用、1 秒 SLA、实时 Agent 资源和芯片容量估算。演示节奏可选择实时、快速、标准或慢速，展示延时不计入控制 SLA。
+打开 http://127.0.0.1:4175，界面会明确分成“① 网管大模型：自然语言 → Intent IR”和“② 基站小模型：Intent IR → Pi Tool Call”。两侧可分别选择无模型基线或真实 API，并独立配置 endpoint、model ID 和 key。演示节奏可选择实时、快速、标准或慢速，展示延时不计入控制 SLA。
 
-不在本机运行模型时，可配置任意 OpenAI-compatible 远端端点后，在界面选择 `Remote model API`：
+不在本机运行模型时，可以在界面配置两套 API，也可以使用独立环境变量启动：
 
-    RAN_MODEL_BASE_URL=https://router.huggingface.co/v1 \
-    RAN_MODEL_ID=Qwen/Qwen3-0.6B \
-    RAN_MODEL_API_KEY=hf_xxx \
+    RAN_INTENT_MODEL_BASE_URL=https://management-model.example/v1 \
+    RAN_INTENT_MODEL_ID=Qwen/Qwen3-8B \
+    RAN_INTENT_MODEL_API_KEY=management_key \
+    RAN_STATION_MODEL_BASE_URL=https://station-model.example/v1 \
+    RAN_STATION_MODEL_ID=Qwen/Qwen3-0.6B \
+    RAN_STATION_MODEL_API_KEY=station_key \
     npm run live
 
 启动实验仪表盘：

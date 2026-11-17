@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
 
 import {
   createLiveControlServer,
@@ -24,21 +25,26 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /结构化 Intent IR/);
   assert.match(page, /naturalLanguage/);
   assert.match(page, /无模型 \/ no model/);
-  assert.match(page, /远端模型 API \/ Remote API/);
-  assert.match(page, /运行资源实测 \/ Live resources/);
-  assert.match(page, /芯片容量规划 \/ Capacity estimate/);
+  assert.match(page, /双模型 Agent 通道 \/ Two-model agent path/);
+  assert.match(page, /网管大模型 API \/ Management LLM/);
+  assert.match(page, /基站小模型 API \/ Station model/);
+  assert.match(page, /基站阶段运行资源 \/ Station-stage resources/);
+  assert.match(page, /基站小模型芯片容量规划 \/ Station capacity/);
   assert.match(page, /演示节奏 \/ Demo pace/);
-  assert.match(page, /Pi Agent 执行与调用过程 \/ Execution trace/);
-  assert.match(page, /模型 API 配置 \/ Model API setup/);
-  assert.match(page, /id="apiBaseUrl"/);
-  assert.match(page, /id="apiModelId"/);
-  assert.match(page, /id="apiKey" type="password"/);
-  assert.match(page, /fetch\('\/api\/model-config'/);
-  assert.match(page, /Key 不会持久化/);
+  assert.match(page, /基站 Pi Agent：Intent IR → Tool Call \/ Execution trace/);
+  assert.match(page, /id="intentApiBaseUrl"/);
+  assert.match(page, /id="stationApiBaseUrl"/);
+  assert.match(page, /id="intentApiKey" type="password"/);
+  assert.match(page, /id="stationApiKey" type="password"/);
+  assert.match(page, /fetch\('\/api\/model-config\?role='/);
+  assert.match(page, /两个 Key 相互独立/);
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
   assert.doesNotMatch(page, /https?:\/\//, "the live UI must not depend on remote assets");
+  const inlineScript = page.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  assert.ok(inlineScript);
+  assert.doesNotThrow(() => new vm.Script(inlineScript, { filename: "live-ui-inline.js" }));
 });
 
 test("validates an in-memory model API configuration without exposing its key", () => {
@@ -59,7 +65,8 @@ test("validates an in-memory model API configuration without exposing its key", 
     apiKey: "test-secret",
     source: "session",
   });
-  assert.deepEqual(publicModelConfig(parsed.value), {
+  assert.deepEqual(publicModelConfig("station", parsed.value), {
+    role: "station",
     configured: true,
     baseUrl: "https://models.example.test/v1",
     modelId: "Qwen/Qwen3-0.6B",
@@ -67,7 +74,7 @@ test("validates an in-memory model API configuration without exposing its key", 
     source: "session",
     persistence: "process_memory",
   });
-  assert.equal("apiKey" in publicModelConfig(parsed.value), false);
+  assert.equal("apiKey" in publicModelConfig("station", parsed.value), false);
 });
 
 test("allows keyed loopback APIs but blocks sending a key over remote http", () => {
@@ -95,16 +102,17 @@ test("allows keyed loopback APIs but blocks sending a key over remote http", () 
 test("accepts rules, faux, and remote API modes with three bounded scenarios", () => {
   assert.deepEqual(parseRunRequest({ mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }), {
     ok: true,
-    value: { mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
+    value: { intentMode: "synthetic", mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
   });
   assert.deepEqual(parseRunRequest({ mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE }), {
     ok: true,
-    value: { mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
+    value: { intentMode: "synthetic", mode: "pi-faux", scenario: "du_timeout", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
   });
-  assert.deepEqual(parseRunRequest({ mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }), {
+  assert.deepEqual(parseRunRequest({ intentMode: "intent-api", mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }), {
     ok: true,
-    value: { mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
+    value: { intentMode: "intent-api", mode: "pi-api", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 300 },
   });
+  assert.equal(parseRunRequest({ intentMode: "shell", mode: "rules", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }).ok, false);
   assert.equal(parseRunRequest({ mode: "shell", scenario: "success", naturalLanguage: NATURAL_LANGUAGE }).ok, false);
   assert.equal(parseRunRequest({ mode: "rules", scenario: "live-ran", naturalLanguage: NATURAL_LANGUAGE }).ok, false);
   assert.equal(parseRunRequest({ mode: "rules", scenario: "success", naturalLanguage: "" }).ok, false);
@@ -130,7 +138,7 @@ test("runs the real Pi-faux loop and emits both Pi and runtime audit events", as
   const messages: any[] = [];
   const result = await runSyntheticTask(
     "test-live-pi",
-    { mode: "pi-faux", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 0 },
+    { intentMode: "synthetic", mode: "pi-faux", scenario: "success", naturalLanguage: NATURAL_LANGUAGE, demoPaceMs: 0 },
     (message) => messages.push(message),
     { parseStageDelayMs: 0 },
   );

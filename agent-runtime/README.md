@@ -4,7 +4,7 @@ This is a Node/TypeScript prototype for the station side of the RAN Agent experi
 
 ```text
 Operator natural language
-  -> observable synthetic Intent Agent
+  -> management Intent Agent: remote large model or synthetic baseline
   -> validated Intent IR
   -> schema/freshness guardrail
   -> Pi Agent Core: one 0.8B turn, thinking off, sequential tool proposal
@@ -33,18 +33,21 @@ npm run experiment -- --mode pi-faux --runs 3
 
 `npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English task to see the parsing trace, Intent IR, Pi lifecycle, Function ACK, client CPU/RSS/heap, token usage, and a separate chip-capacity estimate. Its demo pace can be real-time, fast, standard, or slow; presentation delays are excluded from the station-control SLA. The console never connects to a live RAN or exposes hidden chain-of-thought.
 
-The visible **Model API setup** panel accepts an OpenAI-compatible Base URL, model ID, and optional API key. A key entered there is sent only to the loopback server, kept in current-process memory, never returned by an API response, and cleared from the input after applying. It is not written to a file, log, browser storage, or Git, so it must be entered again after a server restart.
+The visible **Two-model agent path** has two independent API cards. The management-side large model performs natural language → structured Intent semantics; the station-side small model performs Intent IR → Pi tool call. Each card has its own OpenAI-compatible Base URL, model ID, and optional key. Keys are sent only to the loopback server, kept in current-process memory, never returned by an API response, and cleared from the inputs after applying. They are not written to files, logs, browser storage, or Git.
 
-The model bridge accepts a local or remote OpenAI-compatible endpoint. The Agent can remain on a laptop or station simulator while inference runs through a hosted API:
+Both model bridges accept local or remote OpenAI-compatible endpoints. The two roles may use different providers:
 
 ```bash
-RAN_MODEL_BASE_URL=https://router.huggingface.co/v1 \
-RAN_MODEL_ID=Qwen/Qwen3-0.6B \
-RAN_MODEL_API_KEY=hf_xxx \
+RAN_INTENT_MODEL_BASE_URL=https://management-model.example/v1 \
+RAN_INTENT_MODEL_ID=Qwen/Qwen3-8B \
+RAN_INTENT_MODEL_API_KEY=management_key \
+RAN_STATION_MODEL_BASE_URL=https://station-model.example/v1 \
+RAN_STATION_MODEL_ID=Qwen/Qwen3-0.6B \
+RAN_STATION_MODEL_API_KEY=station_key \
 npm run live
 ```
 
-Select `Pi Agent · Remote model API` in the console. Confirm that the provider currently lists the model before running; provider availability is external state. The same variables work with a private vLLM, llama.cpp, Ollama, LM Studio, Alibaba PAI, or another compatible endpoint. Environment variables remain the persistent startup alternative and keep `RAN_MODEL_API_KEY` entirely server-side.
+Select `Remote LLM` for the management Intent Agent and `Pi Agent · Remote small model` for the station Agent. The management adapter forces exactly one `emit_intent_semantics` tool call, then injects timestamps and safety policy deterministically and validates the resulting Intent IR. The station adapter continues to use Pi Agent Core. Confirm that each provider currently lists its configured model; provider availability is external state. Legacy `RAN_MODEL_*` variables still map to the station model.
 
 The reference model is `Qwen/Qwen3-0.6B`. Its official name counts roughly 0.6B parameters while the published repository metadata is about 0.8B total weights, making it the closest official Qwen profile to this project's “about 0.8B” target. The Pi profile uses a 4K context declaration, at most 32 output tokens, text only, and reasoning off.
 

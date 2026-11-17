@@ -35,7 +35,7 @@ skinparam database {
 actor "运营人员 / 上游系统" as Operator
 
 package "意图平面" as IntentPlane {
-  [网管 Intent Agent\n自然语言 → 结构化意图] as IntentAgent
+  [网管 Intent Agent\n大模型 API 或合成基线\n自然语言 → 结构化意图] as IntentAgent
   artifact "Intent IR\n目标 · 约束 · 动作白名单\n有效期 · SLA" as IntentIR
   IntentAgent -right-> IntentIR : 生成契约
 }
@@ -63,7 +63,7 @@ package "执行平面" as ExecutionPlane {
 package "实验与观察平面" as ObservePlane {
   [Experiment Harness\n条件矩阵与规则基线] as Harness
   [Event Stream] as Stream
-  [浅色可视化控制台\n拓扑 · 事件 · SLA · 结果] as UI
+  [浅色可视化控制台\n双模型配置 · 两段轨迹\n拓扑 · SLA · 结果] as UI
   database "JSON / CSV 结果" as Results
 
   Stream -right-> UI : SSE / 订阅
