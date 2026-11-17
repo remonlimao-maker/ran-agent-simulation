@@ -1,17 +1,19 @@
-# Lightweight Pi Agent CU/DU Runtime
+# Lightweight Pi Agent Station Runtime
 
-This is a Node/TypeScript prototype for the base-station side of the RAN Agent experiment. It uses the current official `@earendil-works/pi-agent-core` 1.5.2 for one-shot tool selection and keeps actuation inside a dependency-free deterministic safety core.
+This is a Node/TypeScript prototype for the station side of the RAN Agent experiment. It uses `@earendil-works/pi-agent-core` 1.5.2 for one-shot tool selection and keeps actuation inside a dependency-free deterministic safety core.
 
 ```text
-NMS intent JSON
+Operator natural language
+  -> observable synthetic Intent Agent
+  -> validated Intent IR
   -> schema/freshness guardrail
   -> Pi Agent Core: one 0.8B turn, thinking off, sequential tool proposal
   -> action/target/range guardrail
-  -> abortable DU function
+  -> abortable station function
   -> ACTION_ACK within controlDeadlineMs
 ```
 
-The default completion clock is `intent received -> DU function ACK`. KPI-effect observation is a separate, longer loop and is not claimed as part of the one-second ACK SLA.
+The default completion clock is `validated Intent IR received -> station function ACK`. Management-side natural-language parsing is measured separately. KPI-effect observation is a separate, longer loop and is not claimed as part of the one-second ACK SLA.
 
 ## Run
 
@@ -29,7 +31,7 @@ npm run experiment -- --mode pi-faux --runs 3
 
 `demo` runs the rules-only baseline. `demo:pi` runs the real Pi Agent event and tool loop against Pi's deterministic faux provider, so it needs no model server. Both write newline-delimited events followed by a summary. A UI can subscribe through `StationAgentRuntime.subscribe()` and the Pi runner's `onEvent` callback.
 
-`npm run live` starts a loopback-only console at `http://127.0.0.1:4175`. It can trigger success, model-timeout, and DU-timeout simulations and streams both Pi and deterministic runtime events over SSE. It never connects to a live RAN.
+`npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English natural-language task to see eight auditable parsing stages, the complete structured Intent IR, separate parser/trace timing, the Pi lifecycle, deterministic runtime events, tool dispatch, and ACTION_ACK. Success, model-timeout, and function-timeout scenarios are synthetic; the console never connects to a live RAN and does not expose hidden chain-of-thought.
 
 The local-model bridge accepts any OpenAI-compatible endpoint supported by Pi AI, including llama.cpp, vLLM, Ollama, and LM Studio:
 
@@ -82,7 +84,7 @@ Each condition reports safe completion, timeout/rejection rates, deadline-met ra
 - Optimistic configuration-version check prevents stale writes.
 - Model inference has its own budget inside the overall control deadline.
 - A late model result is discarded and cannot dispatch a tool.
-- DU execution is abortable and checks the deadline immediately before commit.
+- Station-function execution is abortable and checks the deadline immediately before commit.
 - Timeout behavior is always `SAFE_NOOP`.
 - A rules-only agent remains the required lower-bound baseline.
 
@@ -99,13 +101,13 @@ The replay ledger is currently in memory and signature verification is not imple
 - The runtime `AbortSignal` calls `agent.abort()` and is also passed into each Pi tool callback.
 - Pi lifecycle events are reduced to auditable type, timing, tool name, duration, and error fields; assistant text and hidden reasoning are not persisted.
 - The model emits compact tool arguments such as `{cellId, mode}`. The runner deterministically injects gNB scope and the current config version, reducing output tokens and preventing the model from inventing those fields.
-- Pi tool callbacks only record proposals. They never invoke a CU/DU function.
+- Pi tool callbacks only record proposals. They never invoke a station function.
 
 This boundary ensures a late, malformed, or multi-tool model result cannot bypass the one-second deadline or deterministic guardrails.
 
 ## Framework overhead benchmark
 
-`npm run bench:pi` isolates the warm Pi event/tool loop using the faux provider. Recent 100-run samples on the current development machine show sub-millisecond P50/P95 and roughly 6–7 MiB RSS growth, but short-process samples vary. Set `RAN_BENCH_OUT=results/current/pi-framework-benchmark.json` to persist the exact run; that JSON is the source of truth. These are local synthetic framework measurements, not 0.8B inference results; run the benchmark again on the CU target hardware and measure the model process separately.
+`npm run bench:pi` isolates the warm Pi event/tool loop using the faux provider. Recent 100-run samples on the current development machine show sub-millisecond P50/P95 and roughly 6–7 MiB RSS growth, but short-process samples vary. Set `RAN_BENCH_OUT=results/current/pi-framework-benchmark.json` to persist the exact run; that JSON is the source of truth. These are local synthetic framework measurements, not 0.8B inference results; run the benchmark again on the target edge hardware and measure the model process separately.
 
 ## Experiment matrix
 
@@ -130,13 +132,15 @@ In `pi-faux` mode, Pi Agent Core and the safety path are real, but model latency
 - `contracts/`: JSON Schema for intent, action proposal, and audit event.
 - `src/guardrail.ts`: dependency-free runtime validation.
 - `src/runtime.ts`: one-shot control loop and event subscription.
-- `src/du-simulator.ts`: abortable deterministic DU functions.
+- `src/intent-parser.ts`: observable deterministic natural-language-to-Intent-IR demo parser.
+- `src/du-simulator.ts`: abortable deterministic station-function simulator (legacy internal filename).
 - `src/pi-runner.ts`: current Pi Agent Core one-shot implementation.
 - `src/pi-local.ts`: OpenAI-compatible local 0.8B provider wiring.
 - `src/pi-adapter.ts`: narrow Pi-to-policy proposal boundary.
 - `src/experiment-harness.ts`: repeatable SLA/precision/start-state matrix and report generation.
-- `src/live-server.ts`: loopback-only SSE simulation console.
+- `src/live-server.ts`: loopback-only SSE simulation console and intent parsing stream.
 - `src/experiment-harness.ts`: reusable SLA/precision/start-state experiment runner and statistics.
 - `src/experiment-cli.ts`: JSON/CSV matrix CLI.
 - `test/runtime.test.ts`: core success, stale/unsafe input, timeout, and event-stream tests.
 - `test/pi-runner.test.ts`: real Pi tool-loop and multi-call rejection tests.
+- `test/intent-parser.test.ts`: parser output, trace order, deadline, and rejection tests.

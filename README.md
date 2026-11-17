@@ -8,7 +8,7 @@
 2. 在限定上下文、工具数量、量化方式和算力后，能否稳定满足 P95 1 秒 ACTION_ACK？
 3. 如何把模型错误、超时和不确定性转换为拒绝或 SAFE_NOOP，而不是错误执行？
 
-> 当前仓库已实现轻量 Agent Runtime、确定性安全核、规则/Pi 实验路径、模拟 Function、事件流和可视化控制台。网管侧自然语言解析器、真实 0.8B 性能和真实网络闭环仍是待验证项。
+> 当前仓库已实现可观测的自然语言解析演示、版本化 Intent IR、轻量 Agent Runtime、确定性安全核、规则/Pi 实验路径、模拟 Function、事件流和可视化控制台。网管侧真实大模型解析效果、真实 0.8B 性能和真实网络闭环仍是待验证项。
 
 ## 核心设计原则
 
@@ -27,7 +27,7 @@
 
 | 层次 | 主要职责 | 当前状态 |
 |---|---|---|
-| 网管 Intent Agent | 将自然语言目标转换为结构化 Intent IR | 接口已定义，解析器待实现 |
+| 网管 Intent Agent | 将自然语言目标转换为结构化 Intent IR，并输出可审计解析阶段 | 确定性演示解析器已实现；真实大模型路径待接入 |
 | Agent Runtime | 管理任务生命周期、总时限、取消、事件和结果 | 已实现 |
 | Rules / Pi Agent | 在相同输入和工具约束下生成 Action Proposal | 规则、Pi faux 和本地模型连接路径已实现 |
 | Deterministic Guardrail | 校验 Intent、状态、动作、参数、范围、版本与预算 | 已实现 |
@@ -47,6 +47,8 @@
 ![RAN Agent Simulation 端到端控制时序](docs/diagrams/control-sequence.svg)
 
 [查看 PlantUML 源码](docs/diagrams/control-sequence.puml)
+
+自然语言解析属于网管侧阶段，不计入基站 Agent 的 1 秒控制预算；控制计时从已生成并验证的 Intent IR 提交给 Agent Runtime 开始。解析耗时和控制耗时在界面中分别展示。
 
 主控制时延定义为：
 
@@ -100,6 +102,8 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 | 算力 | 目标 CPU / 边缘 GPU、线程数、offload 和功耗模式 | RSS / VRAM、平均/峰值功耗、每个安全成功任务的能耗 |
 | 故障条件 | 过期、冲突、陈旧遥测、越权、多工具、版本冲突、ACK 丢失、模型超时 | 正确拒绝、SAFE_NOOP、False Actuation、回滚 |
 
+`Pi faux` 不包含任何 0.8B 模型权重或真实推理：它只运行真实 Pi Agent 协议与工具循环，并用预设响应/可控延迟验证框架开销和失败语义。真实 0.8B 结果必须使用 `Pi + 0.8B` 条件单独测量。
+
 首轮探索性 Go/No-Go 门槛：
 
 - False Actuation Rate = 0。
@@ -119,11 +123,12 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 - 推理与执行 deadline、取消和迟到结果丢弃。
 - Intent 时效、重放、状态约束、动作范围和参数校验。
 - 规则基线、Pi faux、外部本地模型连接路径和 JSON/CSV 实验结果。
+- 自然语言解析的 8 阶段可审计轨迹、完整 Intent IR JSON 和独立解析耗时。
 - 有序 Runtime/Pi 事件、SSE 实时控制台与观察器故障隔离。
 
 尚未完成：
 
-- 网管侧自然语言到 Intent IR 的正式实现与评测。
+- 网管侧真实大模型的自然语言到 Intent IR 路径、测试集和效果评测。
 - Intent 签名验证以及跨进程、跨重启的持久化防重放。
 - 真实 0.8B INT4/INT8 在目标硬件上的准确率、时延、VRAM/RSS 和功耗测量。
 - 真实执行适配器、KPI 效果闭环和回滚验证。
@@ -139,7 +144,7 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
     npm test
     npm run live
 
-打开 http://127.0.0.1:4175 查看 Agent 事件、工具调用和 SLA 过程。
+打开 http://127.0.0.1:4175，输入中文或英文自然语言任务后，可依次查看 8 个双语意图解析阶段、完整 Intent IR、Agent 事件、工具调用和 1 秒 SLA 过程。
 
 启动实验仪表盘：
 

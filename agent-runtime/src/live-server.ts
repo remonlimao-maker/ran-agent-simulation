@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-ai";
 
 import { DuSimulator } from "./du-simulator.ts";
+import { parseNaturalLanguageIntent } from "./intent-parser.ts";
 import { PiStationAgentAdapter } from "./pi-adapter.ts";
 import { PiAgentOneShotRunner } from "./pi-runner.ts";
 import { RuleBasedAgent } from "./rule-agent.ts";
@@ -22,7 +23,6 @@ import type {
   DecisionInput,
   RunResult,
   StationDecisionAgent,
-  StationIntent,
 } from "./types.ts";
 
 export type RunMode = "rules" | "pi-faux";
@@ -31,10 +31,19 @@ export type Scenario = "success" | "model_timeout" | "du_timeout";
 export interface RunRequest {
   mode: RunMode;
   scenario: Scenario;
+  naturalLanguage: string;
 }
 
 interface LiveMessage {
-  kind: "hello" | "run_started" | "event" | "run_complete" | "run_error";
+  kind:
+    | "hello"
+    | "run_started"
+    | "intent_parse_started"
+    | "intent_parse_stage"
+    | "intent_ir_ready"
+    | "event"
+    | "run_complete"
+    | "run_error";
   [key: string]: unknown;
 }
 
@@ -164,7 +173,33 @@ export async function runSyntheticTask(
   runId: string,
   request: RunRequest,
   broadcast: (message: LiveMessage) => void,
+  options: { parseStageDelayMs?: number } = {},
 ): Promise<RunResult> {
+  broadcast({
+    kind: "intent_parse_started",
+    runId,
+    label: "网管 Intent Agent 正在解析 / Parsing operator intent",
+    parser: "synthetic-intent-agent/0.1",
+  });
+  const parsed = await parseNaturalLanguageIntent(request.naturalLanguage, {
+    scenario: request.scenario,
+    stageDelayMs: options.parseStageDelayMs ?? 70,
+    onStage: (stage) => broadcast({
+      kind: "intent_parse_stage",
+      runId,
+      stream: "intent-agent",
+      stage,
+    }),
+  });
+  broadcast({
+    kind: "intent_ir_ready",
+    runId,
+    parser: parsed.parser,
+    parseElapsedMs: parsed.elapsedMs,
+    traceElapsedMs: parsed.traceElapsedMs,
+    intentIr: parsed.intent,
+  });
+
   const startedAtMs = performance.now();
   const controlElapsed = () => Math.round((performance.now() - startedAtMs) * 100) / 100;
   const du = makeDu(request.scenario === "du_timeout" ? 1_200 : 35);
@@ -185,7 +220,7 @@ export async function runSyntheticTask(
   }));
 
   try {
-    return await runtime.run(makeIntent(request.scenario));
+    return await runtime.run(parsed.intent);
   } finally {
     unsubscribe();
   }
@@ -210,7 +245,7 @@ function makeAgent(request: RunRequest, onPiEvent: (event: unknown) => void): St
     model: faux.getModel(),
     streamFn: models.streamSimple.bind(models),
     onEvent: onPiEvent,
-  }), "Qwen3.5-0.8B / faux transport");
+  }), "Pi faux provider / no model inference");
 }
 
 class SlowRulesAgent implements StationDecisionAgent {
@@ -249,30 +284,6 @@ function makeDu(ackDelayMs: number): DuSimulator {
   }], { ackDelayMs });
 }
 
-function makeIntent(scenario: Scenario): StationIntent {
-  const now = Date.now();
-  return {
-    schemaVersion: "0.1",
-    intentId: `intent-live-${crypto.randomUUID()}`,
-    issuedAt: new Date(now - 1_000).toISOString(),
-    validUntil: new Date(now + 60_000).toISOString(),
-    target: { gnbId: "gnb-001", cellIds: ["cell-01"] },
-    objective: { metric: "energy_consumption", direction: "decrease", target: 0.15 },
-    constraints: [
-      { metric: "rrc_setup_success_rate", op: ">=", value: 0.99 },
-      { metric: "dl_throughput_p95_mbps", op: ">=", value: 50 },
-    ],
-    allowedActions: ["set_energy_saving_mode"],
-    execution: {
-      controlDeadlineMs: 1_000,
-      maxInferenceMs: scenario === "model_timeout" ? 120 : 450,
-      maxCells: 1,
-      completionSemantics: "ACTION_ACK",
-      timeoutPolicy: "SAFE_NOOP",
-    },
-  };
-}
-
 export function parseRunRequest(value: unknown): { ok: true; value: RunRequest } | { ok: false; error: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "request body must be an object" };
   const record = value as Record<string, unknown>;
@@ -280,7 +291,20 @@ export function parseRunRequest(value: unknown): { ok: true; value: RunRequest }
   if (record.scenario !== "success" && record.scenario !== "model_timeout" && record.scenario !== "du_timeout") {
     return { ok: false, error: "scenario must be success, model_timeout, or du_timeout" };
   }
-  return { ok: true, value: { mode: record.mode, scenario: record.scenario } };
+  if (typeof record.naturalLanguage !== "string" || record.naturalLanguage.trim().length === 0) {
+    return { ok: false, error: "naturalLanguage must be a non-empty string" };
+  }
+  if (record.naturalLanguage.length > 1_200) {
+    return { ok: false, error: "naturalLanguage must not exceed 1200 characters" };
+  }
+  return {
+    ok: true,
+    value: {
+      mode: record.mode,
+      scenario: record.scenario,
+      naturalLanguage: record.naturalLanguage.trim(),
+    },
+  };
 }
 
 export function formatSseMessage(message: Record<string, unknown>): string {
