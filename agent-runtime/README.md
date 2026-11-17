@@ -33,6 +33,8 @@ npm run experiment -- --mode pi-faux --runs 3
 
 `npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English task to see the parsing trace, Intent IR, Pi lifecycle, Function ACK, client CPU/RSS/heap, token usage, and a separate chip-capacity estimate. Its demo pace can be real-time, fast, standard, or slow; presentation delays are excluded from the station-control SLA. The console never connects to a live RAN or exposes hidden chain-of-thought.
 
+The visible **Model API setup** panel accepts an OpenAI-compatible Base URL, model ID, and optional API key. A key entered there is sent only to the loopback server, kept in current-process memory, never returned by an API response, and cleared from the input after applying. It is not written to a file, log, browser storage, or Git, so it must be entered again after a server restart.
+
 The model bridge accepts a local or remote OpenAI-compatible endpoint. The Agent can remain on a laptop or station simulator while inference runs through a hosted API:
 
 ```bash
@@ -42,7 +44,7 @@ RAN_MODEL_API_KEY=hf_xxx \
 npm run live
 ```
 
-Select `Pi Agent · Remote model API` in the console. Confirm that the provider currently lists the model before running; provider availability is external state. The same variables work with a private vLLM, llama.cpp, Ollama, LM Studio, Alibaba PAI, or another compatible endpoint. `RAN_MODEL_API_KEY` stays server-side and is never sent to the browser.
+Select `Pi Agent · Remote model API` in the console. Confirm that the provider currently lists the model before running; provider availability is external state. The same variables work with a private vLLM, llama.cpp, Ollama, LM Studio, Alibaba PAI, or another compatible endpoint. Environment variables remain the persistent startup alternative and keep `RAN_MODEL_API_KEY` entirely server-side.
 
 The reference model is `Qwen/Qwen3-0.6B`. Its official name counts roughly 0.6B parameters while the published repository metadata is about 0.8B total weights, making it the closest official Qwen profile to this project's “about 0.8B” target. The Pi profile uses a 4K context declaration, at most 32 output tokens, text only, and reasoning off.
 

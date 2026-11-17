@@ -126,7 +126,7 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 - 推理与执行 deadline、取消和迟到结果丢弃。
 - Intent 时效、重放、状态约束、动作范围和参数校验。
 - 规则基线、Pi faux、外部本地模型连接路径和 JSON/CSV 实验结果。
-- OpenAI-compatible 远端模型 API 模式；API key 仅保留在服务端环境变量。
+- OpenAI-compatible 远端模型 API 模式；界面可配置 endpoint、模型和 API key，key 仅保留在当前本地服务进程内存，也可改用服务端环境变量。
 - 推理期间 Agent CPU/RSS/Heap、token 使用和测量来源标记。
 - 约 0.8B INT4 的 TOPS、RAM、双槽存储与内存带宽可审计容量估算。
 - Pi Agent 请求摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail、Function dispatch 与 ACK 的完整调用轨迹；faux 与真实 API 明确区分。

@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   createLiveControlServer,
   formatSseMessage,
+  parseModelConfigUpdate,
   parseRunRequest,
+  publicModelConfig,
   runSyntheticTask,
 } from "../src/live-server.ts";
 import { renderLiveUi } from "../src/live-ui.ts";
@@ -27,10 +29,67 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /芯片容量规划 \/ Capacity estimate/);
   assert.match(page, /演示节奏 \/ Demo pace/);
   assert.match(page, /Pi Agent 执行与调用过程 \/ Execution trace/);
+  assert.match(page, /模型 API 配置 \/ Model API setup/);
+  assert.match(page, /id="apiBaseUrl"/);
+  assert.match(page, /id="apiModelId"/);
+  assert.match(page, /id="apiKey" type="password"/);
+  assert.match(page, /fetch\('\/api\/model-config'/);
+  assert.match(page, /Key 不会持久化/);
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
   assert.doesNotMatch(page, /https?:\/\//, "the live UI must not depend on remote assets");
+});
+
+test("validates an in-memory model API configuration without exposing its key", () => {
+  const parsed = parseModelConfigUpdate({
+    baseUrl: "https://models.example.test/v1/",
+    modelId: "Qwen/Qwen3-0.6B",
+    apiKey: "test-secret",
+  }, {
+    baseUrl: "",
+    modelId: "Qwen/Qwen3-0.6B",
+    source: "default",
+  });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.value, {
+    baseUrl: "https://models.example.test/v1",
+    modelId: "Qwen/Qwen3-0.6B",
+    apiKey: "test-secret",
+    source: "session",
+  });
+  assert.deepEqual(publicModelConfig(parsed.value), {
+    configured: true,
+    baseUrl: "https://models.example.test/v1",
+    modelId: "Qwen/Qwen3-0.6B",
+    apiKeyConfigured: true,
+    source: "session",
+    persistence: "process_memory",
+  });
+  assert.equal("apiKey" in publicModelConfig(parsed.value), false);
+});
+
+test("allows keyed loopback APIs but blocks sending a key over remote http", () => {
+  const current = {
+    baseUrl: "",
+    modelId: "Qwen/Qwen3-0.6B",
+    source: "default" as const,
+  };
+  assert.equal(parseModelConfigUpdate({
+    baseUrl: "http://127.0.0.1:8000/v1",
+    modelId: "local-qwen",
+    apiKey: "local-key",
+  }, current).ok, true);
+  assert.equal(parseModelConfigUpdate({
+    baseUrl: "http://models.example.test/v1",
+    modelId: "remote-qwen",
+    apiKey: "unsafe-key",
+  }, current).ok, false);
+  assert.equal(parseModelConfigUpdate({
+    baseUrl: "file:///tmp/model",
+    modelId: "bad-scheme",
+  }, current).ok, false);
 });
 
 test("accepts rules, faux, and remote API modes with three bounded scenarios", () => {

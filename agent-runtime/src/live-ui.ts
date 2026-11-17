@@ -24,7 +24,7 @@ export function renderLiveUi(): string {
     body { margin: 0; min-height: 100vh; background:
       radial-gradient(circle at 20% 0%, rgba(35, 174, 191, .13), transparent 38rem),
       linear-gradient(150deg, #f8fbfc, #eef5f6 60%, #f7f9fa); }
-    button, select, textarea { font: inherit; }
+    button, select, textarea, input { font: inherit; }
     .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
     .eyebrow { color: var(--cyan); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 800; }
     h1 { margin: 8px 0 10px; font-size: clamp(28px, 5vw, 48px); letter-spacing: -.045em; }
@@ -41,12 +41,22 @@ export function renderLiveUi(): string {
     .control { display: grid; gap: 7px; }
     .intent-control { grid-column: 1 / -1; }
     label { color: var(--muted); font-size: 12px; }
-    select, button, textarea { border: 1px solid var(--line); border-radius: 12px; background: #ffffff; color: #17252a; }
-    select, button { min-height: 44px; padding: 0 14px; }
+    select, button, textarea, input { border: 1px solid var(--line); border-radius: 12px; background: #ffffff; color: #17252a; }
+    select, button, input { min-height: 44px; padding: 0 14px; }
     textarea { width: 100%; min-height: 100px; resize: vertical; padding: 12px 14px; line-height: 1.6; }
-    select:focus-visible, button:focus-visible, textarea:focus-visible { outline: 3px solid rgba(5, 141, 163, .2); outline-offset: 2px; }
+    input { width: 100%; min-width: 0; }
+    select:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid rgba(5, 141, 163, .2); outline-offset: 2px; }
     button { align-self: end; min-width: 160px; border-color: #057d91; background: linear-gradient(135deg, #079bb2, #057d91); color: #ffffff; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(5, 125, 145, .18); }
     button:disabled { opacity: .45; cursor: wait; }
+    .api-config { margin: 0 0 16px; border: 1px solid #b9dde2; border-radius: 16px; padding: 16px; background: rgba(247, 252, 252, .96); box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
+    .api-config-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .api-config-head h2 { margin: 0; font-size: 15px; }
+    .api-config-state { display: inline-flex; border: 1px solid #edcc98; border-radius: 999px; padding: 5px 9px; background: #fff7e9; color: #89550a; font-size: 10px; font-weight: 800; }
+    .api-config-state[data-configured="true"] { border-color: #9dd9be; background: #edf9f3; color: #126a4c; }
+    .api-config-grid { display: grid; grid-template-columns: minmax(260px, 1.35fr) minmax(190px, .85fr) minmax(190px, .85fr) auto; gap: 10px; align-items: end; }
+    .api-config-message { min-height: 16px; margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .api-config-message[data-state="error"] { color: var(--red); }
+    .api-config-message[data-state="success"] { color: var(--green); }
     .intent-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 16px; margin: 0 0 16px; }
     .intent-panel { min-width: 0; border: 1px solid #cfe1e4; background: rgba(250, 253, 253, .92); border-radius: 16px; padding: 16px; box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
     .intent-panel-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 12px; }
@@ -123,6 +133,8 @@ export function renderLiveUi(): string {
       .status { margin-top: 16px; }
       .controls { grid-template-columns: 1fr 1fr; }
       button { grid-column: 1 / -1; }
+      .api-config-grid { grid-template-columns: 1fr; }
+      .api-config-grid button { grid-column: 1; }
       .intent-grid { grid-template-columns: 1fr; }
       .resource-grid { grid-template-columns: 1fr; }
       .resource-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -155,6 +167,17 @@ export function renderLiveUi(): string {
       <div class="control"><label for="scenario">实验场景 / Scenario</label><select id="scenario"><option value="success">确认成功 / ACK success</option><option value="model_timeout">模型超时 / Model timeout → SAFE_NOOP</option><option value="du_timeout">Function 超时 / timeout → SAFE_NOOP</option></select></div>
       <div class="control"><label for="demoPace">演示节奏 / Demo pace（不计入 SLA）</label><select id="demoPace"><option value="0">实时 / Real-time</option><option value="120">快速 / Fast · 120 ms</option><option value="300" selected>标准 / Standard · 300 ms</option><option value="700">慢速 / Slow · 700 ms</option></select></div>
       <button type="button" id="run">解析意图并运行 / Parse &amp; run</button>
+    </section>
+
+    <section class="api-config" aria-labelledby="apiConfigTitle">
+      <div class="api-config-head"><h2 id="apiConfigTitle">模型 API 配置 / Model API setup</h2><span class="api-config-state" id="apiConfigState" data-configured="false">未配置 / Not configured</span></div>
+      <div class="api-config-grid">
+        <div class="control"><label for="apiBaseUrl">OpenAI-compatible Base URL</label><input id="apiBaseUrl" type="url" inputmode="url" spellcheck="false" placeholder="模型服务的 /v1 endpoint" /></div>
+        <div class="control"><label for="apiModelId">模型 ID / Model ID</label><input id="apiModelId" type="text" spellcheck="false" value="Qwen/Qwen3-0.6B" /></div>
+        <div class="control"><label for="apiKey">API Key（可选 / optional）</label><input id="apiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="仅保存在当前进程内存" /></div>
+        <button type="button" id="saveApiConfig">保存配置 / Apply</button>
+      </div>
+      <p class="api-config-message" id="apiConfigMessage">API Key 仅发送到本机控制台并保存在当前服务进程内存；不会写入文件、日志或 Git。<br /><span lang="en">The key stays in this local server process only; it is never written to files, logs, or Git.</span></p>
     </section>
 
     <div class="intent-grid">
@@ -266,17 +289,25 @@ export function renderLiveUi(): string {
     const rssBarLabel = $('rssBarLabel');
     const piTrace = $('piTrace');
     const piTraceBadge = $('piTraceBadge');
+    const modeSelect = $('mode');
+    const apiBaseUrl = $('apiBaseUrl');
+    const apiModelId = $('apiModelId');
+    const apiKey = $('apiKey');
+    const saveApiConfig = $('saveApiConfig');
+    const apiConfigState = $('apiConfigState');
+    const apiConfigMessage = $('apiConfigMessage');
     let piTraceSequence = 0;
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
+    let modelConfig = { configured: false, modelId: 'Qwen/Qwen3-0.6B', apiKeyConfigured: false };
     let running = false;
 
     fetch('/api/health').then((response) => response.json()).then((health) => {
-      const option = $('apiModeOption');
-      option.textContent = health.remoteApiConfigured
-        ? 'Pi Agent · 远端 API / Remote · ' + health.remoteModelId
-        : 'Pi Agent · 远端模型 API / Remote API（未配置 / not configured）';
       if (health.capacityEstimate) renderCapacity(health.capacityEstimate);
     }).catch(() => undefined);
+    fetch('/api/model-config').then((response) => response.json()).then(renderModelConfig).catch(() => {
+      apiConfigMessage.dataset.state = 'error';
+      apiConfigMessage.textContent = '无法读取模型 API 配置 / Could not load model API configuration';
+    });
 
     const source = new EventSource('/api/events');
     source.onopen = () => setStatus('ready', 'SSE 已就绪 / ready');
@@ -321,15 +352,72 @@ export function renderLiveUi(): string {
       return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
     }
 
+    saveApiConfig.addEventListener('click', async () => {
+      if (running) return;
+      saveApiConfig.disabled = true;
+      apiConfigMessage.dataset.state = '';
+      apiConfigMessage.textContent = '正在保存到当前服务进程… / Applying to this server process…';
+      const payload = {
+        baseUrl: apiBaseUrl.value.trim(),
+        modelId: apiModelId.value.trim()
+      };
+      if (apiKey.value.trim()) payload.apiKey = apiKey.value.trim();
+      try {
+        const response = await fetch('/api/model-config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await response.json().catch(() => ({ error: response.statusText }));
+        if (!response.ok) throw new Error(body.error || 'Configuration rejected');
+        renderModelConfig(body);
+        modeSelect.value = 'pi-api';
+        apiConfigMessage.dataset.state = 'success';
+        apiConfigMessage.textContent = '配置已应用到当前进程；现在可运行 Remote API。Key 不会持久化。 / Applied for this process; ready for Remote API. The key is not persisted.';
+        setStatus('ready', '模型 API 已配置 / Model API configured');
+      } catch (error) {
+        apiConfigMessage.dataset.state = 'error';
+        apiConfigMessage.textContent = error instanceof Error ? error.message : String(error);
+        setStatus('rejected', '模型 API 配置失败 / Configuration rejected');
+      } finally {
+        apiKey.value = '';
+        saveApiConfig.disabled = false;
+      }
+    });
+
+    function renderModelConfig(config) {
+      modelConfig = config;
+      apiBaseUrl.value = config.baseUrl || '';
+      apiModelId.value = config.modelId || 'Qwen/Qwen3-0.6B';
+      apiKey.value = '';
+      apiKey.placeholder = config.apiKeyConfigured
+        ? '已配置；留空保持 / configured; blank keeps it'
+        : '可选；仅当前进程内存 / optional; memory only';
+      apiConfigState.dataset.configured = String(Boolean(config.configured));
+      apiConfigState.textContent = config.configured
+        ? '已配置 / Configured · ' + config.modelId
+        : '未配置 / Not configured';
+      $('apiModeOption').textContent = config.configured
+        ? 'Pi Agent · 远端 API / Remote · ' + config.modelId
+        : 'Pi Agent · 远端模型 API / Remote API（未配置 / not configured）';
+    }
+
     runButton.addEventListener('click', async () => {
       if (running) return;
+      if (modeSelect.value === 'pi-api' && !modelConfig.configured) {
+        setStatus('rejected', '请先配置模型 API / Configure the model API first');
+        apiConfigMessage.dataset.state = 'error';
+        apiConfigMessage.textContent = 'Remote API 模式需要 Base URL；请在下方保存配置。 / Remote API requires a Base URL; apply it below first.';
+        apiBaseUrl.focus();
+        return;
+      }
       runButton.disabled = true;
       prepareIntentPanels();
       const response = await fetch('/api/run', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          mode: $('mode').value,
+          mode: modeSelect.value,
           scenario: $('scenario').value,
           naturalLanguage: naturalLanguage.value,
           demoPaceMs: Number($('demoPace').value)

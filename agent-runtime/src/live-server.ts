@@ -37,6 +37,24 @@ export interface RunRequest {
   demoPaceMs: number;
 }
 
+export interface RemoteModelConfig {
+  baseUrl: string;
+  modelId: string;
+  apiKey?: string;
+  source: "default" | "environment" | "session";
+}
+
+export interface PublicRemoteModelConfig {
+  configured: boolean;
+  baseUrl: string;
+  modelId: string;
+  apiKeyConfigured: boolean;
+  source: RemoteModelConfig["source"];
+  persistence: "process_memory";
+}
+
+const DEFAULT_REMOTE_MODEL_ID = "Qwen/Qwen3-0.6B";
+
 interface LiveMessage {
   kind:
     | "hello"
@@ -63,6 +81,7 @@ export function createLiveControlServer(): LiveControlServer {
   const clients = new Set<ServerResponse>();
   let running = false;
   let lastResult: RunResult | undefined;
+  let remoteModelConfig = modelConfigFromEnvironment();
 
   const broadcast = (message: LiveMessage): void => {
     const frame = formatSseMessage(message);
@@ -93,13 +112,38 @@ export function createLiveControlServer(): LiveControlServer {
           running,
           clientCount: clients.size,
           lastStatus: lastResult?.status ?? null,
-          remoteApiConfigured: Boolean(process.env.RAN_MODEL_BASE_URL),
-          remoteModelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+          remoteApiConfigured: Boolean(remoteModelConfig.baseUrl),
+          remoteModelId: remoteModelConfig.modelId,
           capacityEstimate: estimateModelCapacity({
-            modelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+            modelId: remoteModelConfig.modelId,
             inferenceBudgetMs: 450,
           }),
         });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/model-config") {
+        sendJson(response, 200, publicModelConfig(remoteModelConfig));
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/model-config") {
+        if (running) {
+          sendJson(response, 409, { error: "model configuration cannot change while a task is running" });
+          return;
+        }
+        let body: unknown;
+        try {
+          body = await readJsonBody(request);
+        } catch (error) {
+          sendJson(response, 400, { error: error instanceof Error ? error.message : String(error) });
+          return;
+        }
+        const parsed = parseModelConfigUpdate(body, remoteModelConfig);
+        if (!parsed.ok) {
+          sendJson(response, 400, { error: parsed.error });
+          return;
+        }
+        remoteModelConfig = parsed.value;
+        sendJson(response, 200, publicModelConfig(remoteModelConfig));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/events") {
@@ -139,19 +183,20 @@ export function createLiveControlServer(): LiveControlServer {
         running = true;
         const runId = crypto.randomUUID();
         sendJson(response, 202, { runId, accepted: true });
+        const taskModelConfig = structuredClone(remoteModelConfig);
         broadcast({
           kind: "run_started",
           runId,
           ...parsed.value,
           deadlineMs: 1_000,
-          modelId: modelIdForMode(parsed.value.mode),
+          modelId: modelIdForMode(parsed.value.mode, taskModelConfig),
           modelResponseSource: parsed.value.mode === "pi-api"
             ? "remote_api"
             : parsed.value.mode === "pi-faux"
               ? "preset_fixture"
               : "no_model",
         });
-        void runSyntheticTask(runId, parsed.value, broadcast).then((result) => {
+        void runSyntheticTask(runId, parsed.value, broadcast, { remoteModelConfig: taskModelConfig }).then((result) => {
           lastResult = result;
           running = false;
           broadcast({ kind: "run_complete", runId, result });
@@ -200,7 +245,11 @@ export async function runSyntheticTask(
   runId: string,
   request: RunRequest,
   broadcast: (message: LiveMessage) => void,
-  options: { parseStageDelayMs?: number; resourceSampleIntervalMs?: number } = {},
+  options: {
+    parseStageDelayMs?: number;
+    resourceSampleIntervalMs?: number;
+    remoteModelConfig?: RemoteModelConfig;
+  } = {},
 ): Promise<RunResult> {
   broadcast({
     kind: "intent_parse_started",
@@ -230,10 +279,11 @@ export async function runSyntheticTask(
   const startedAtMs = performance.now();
   const controlElapsed = () => Math.round((performance.now() - startedAtMs) * 100) / 100;
   const du = makeDu(request.scenario === "du_timeout" ? 1_200 : 35);
+  const remoteModelConfig = options.remoteModelConfig ?? modelConfigFromEnvironment();
   const resourceMonitor = new InferenceResourceMonitor({
     backend: request.mode,
-    modelId: modelIdForMode(request.mode),
-    capacityModelId: process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B",
+    modelId: modelIdForMode(request.mode, remoteModelConfig),
+    capacityModelId: remoteModelConfig.modelId,
     inferenceBudgetMs: parsed.intent.execution.maxInferenceMs,
     sampleIntervalMs: options.resourceSampleIntervalMs,
     onSample: (sample) => broadcast({ kind: "resource_sample", runId, sample }),
@@ -242,7 +292,7 @@ export async function runSyntheticTask(
   let unsubscribe: () => void = () => undefined;
 
   try {
-    const decisionAgent = makeAgent(request, (event) => {
+    const decisionAgent = makeAgent(request, remoteModelConfig, (event) => {
       resourceMonitor.recordPiUsage(event);
       broadcast({
         kind: "event",
@@ -270,20 +320,24 @@ export async function runSyntheticTask(
   }
 }
 
-function makeAgent(request: RunRequest, onPiEvent: (event: PiAuditEvent) => void): StationDecisionAgent {
+function makeAgent(
+  request: RunRequest,
+  remoteModelConfig: RemoteModelConfig,
+  onPiEvent: (event: PiAuditEvent) => void,
+): StationDecisionAgent {
   if (request.mode === "rules") {
     return request.scenario === "model_timeout" ? new SlowRulesAgent(500) : new RuleBasedAgent();
   }
   if (request.mode === "pi-api") {
-    const baseUrl = process.env.RAN_MODEL_BASE_URL;
+    const baseUrl = remoteModelConfig.baseUrl;
     if (!baseUrl) {
-      throw new Error("remote model API is not configured; set RAN_MODEL_BASE_URL, RAN_MODEL_ID, and optionally RAN_MODEL_API_KEY");
+      throw new Error("remote model API is not configured; use the Model API setup panel or environment variables");
     }
-    const modelId = process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
+    const modelId = remoteModelConfig.modelId;
     return new PiStationAgentAdapter(createLocalPiRunner({
       baseUrl,
       modelId,
-      apiKey: process.env.RAN_MODEL_API_KEY,
+      apiKey: remoteModelConfig.apiKey,
       onEvent: onPiEvent,
     }), modelId);
   }
@@ -371,8 +425,91 @@ export function parseRunRequest(value: unknown): { ok: true; value: RunRequest }
   };
 }
 
-function modelIdForMode(mode: RunMode): string {
-  if (mode === "pi-api") return process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
+export function parseModelConfigUpdate(
+  value: unknown,
+  current: RemoteModelConfig = modelConfigFromEnvironment(),
+): { ok: true; value: RemoteModelConfig } | { ok: false; error: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, error: "model configuration must be an object" };
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.baseUrl !== "string" || record.baseUrl.trim().length === 0) {
+    return { ok: false, error: "baseUrl must be a non-empty absolute URL" };
+  }
+  if (record.baseUrl.length > 2_048) return { ok: false, error: "baseUrl must not exceed 2048 characters" };
+  if (typeof record.modelId !== "string" || record.modelId.trim().length === 0) {
+    return { ok: false, error: "modelId must be a non-empty string" };
+  }
+  if (record.modelId.length > 256) return { ok: false, error: "modelId must not exceed 256 characters" };
+  if (record.apiKey !== undefined && typeof record.apiKey !== "string") {
+    return { ok: false, error: "apiKey must be a string when provided" };
+  }
+  if (typeof record.apiKey === "string" && record.apiKey.length > 8_192) {
+    return { ok: false, error: "apiKey must not exceed 8192 characters" };
+  }
+
+  let endpoint: URL;
+  try {
+    endpoint = new URL(record.baseUrl.trim());
+  } catch {
+    return { ok: false, error: "baseUrl must be a valid absolute URL" };
+  }
+  if (endpoint.protocol !== "https:" && endpoint.protocol !== "http:") {
+    return { ok: false, error: "baseUrl must use https, or http for a trusted local endpoint" };
+  }
+  if (endpoint.username || endpoint.password) {
+    return { ok: false, error: "baseUrl must not contain embedded credentials" };
+  }
+  if (endpoint.search || endpoint.hash) {
+    return { ok: false, error: "baseUrl must not contain a query string or fragment" };
+  }
+
+  const suppliedKey = typeof record.apiKey === "string" ? record.apiKey.trim() : "";
+  const apiKey = suppliedKey || current.apiKey;
+  const loopback = endpoint.hostname === "localhost"
+    || endpoint.hostname.endsWith(".localhost")
+    || endpoint.hostname === "127.0.0.1"
+    || endpoint.hostname === "[::1]";
+  if (endpoint.protocol === "http:" && !loopback && apiKey) {
+    return { ok: false, error: "an API key may only be sent to an https or loopback endpoint" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      baseUrl: endpoint.href.replace(/\/$/, ""),
+      modelId: record.modelId.trim(),
+      apiKey,
+      source: "session",
+    },
+  };
+}
+
+export function publicModelConfig(config: RemoteModelConfig): PublicRemoteModelConfig {
+  return {
+    configured: Boolean(config.baseUrl),
+    baseUrl: config.baseUrl,
+    modelId: config.modelId,
+    apiKeyConfigured: Boolean(config.apiKey),
+    source: config.source,
+    persistence: "process_memory",
+  };
+}
+
+function modelConfigFromEnvironment(): RemoteModelConfig {
+  const baseUrl = process.env.RAN_MODEL_BASE_URL?.trim() ?? "";
+  const modelId = process.env.RAN_MODEL_ID?.trim() || DEFAULT_REMOTE_MODEL_ID;
+  const apiKey = process.env.RAN_MODEL_API_KEY?.trim() || undefined;
+  return {
+    baseUrl,
+    modelId,
+    apiKey,
+    source: baseUrl ? "environment" : "default",
+  };
+}
+
+function modelIdForMode(mode: RunMode, remoteModelConfig: RemoteModelConfig): string {
+  if (mode === "pi-api") return remoteModelConfig.modelId;
   if (mode === "pi-faux") return "Pi faux provider (no model)";
   return "rules baseline (no model)";
 }
