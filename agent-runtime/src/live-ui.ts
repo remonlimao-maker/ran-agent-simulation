@@ -5,7 +5,7 @@ export function renderLiveUi(): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>RAN Agent Live Control Room</title>
+  <title>RAN Agent Two-model Test</title>
   <style>
     :root {
       color-scheme: light;
@@ -37,9 +37,11 @@ export function renderLiveUi(): string {
     .status[data-state="running"] .dot { background: var(--cyan); animation: pulse 1s infinite; }
     .status[data-state="safe_timeout"] .dot, .status[data-state="rejected"] .dot { background: var(--amber); }
     @keyframes pulse { 50% { opacity: .35; } }
-    .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 12px; margin: 28px 0 16px; }
+    .controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 28px 0 16px; }
     .control { display: grid; gap: 7px; }
     .intent-control { grid-column: 1 / -1; }
+    .run-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .run-mode { color: var(--muted); font-size: 11px; line-height: 1.5; }
     label { color: var(--muted); font-size: 12px; }
     select, button, textarea, input { border: 1px solid var(--line); border-radius: 12px; background: #ffffff; color: #17252a; }
     select, button, input { min-height: 44px; padding: 0 14px; }
@@ -75,6 +77,20 @@ export function renderLiveUi(): string {
     .api-config-message { min-height: 16px; margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .api-config-message[data-state="error"] { color: var(--red); }
     .api-config-message[data-state="success"] { color: var(--green); }
+    .core-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0 0 16px; }
+    .result-card { min-width: 0; border: 1px solid #cfe1e4; background: rgba(250, 253, 253, .96); border-radius: 16px; padding: 16px; box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
+    .result-card[data-step="1"] { border-top: 4px solid #1674a8; }
+    .result-card[data-step="2"] { border-top: 4px solid #7554c9; }
+    .result-card[data-step="3"] { border-top: 4px solid var(--green); }
+    .result-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+    .result-head h2 { margin: 0; font-size: 15px; }
+    .result-state { color: var(--muted); font-size: 10px; text-align: right; overflow-wrap: anywhere; }
+    .result-output { min-height: 250px; max-height: 410px; overflow: auto; margin: 0; border: 1px solid #dce8ea; border-radius: 10px; padding: 11px 12px; background: #ffffff; color: #284148; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    details.advanced-settings, details.advanced-lab { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .78); }
+    details.advanced-settings > summary, details.advanced-lab > summary { padding: 12px 14px; color: var(--muted); font-size: 12px; font-weight: 750; cursor: pointer; }
+    .advanced-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0 14px 14px; }
+    .advanced-body { padding: 2px 14px 14px; }
+    .advanced-body > :first-child { margin-top: 0; }
     .intent-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 16px; margin: 0 0 16px; }
     .intent-panel { min-width: 0; border: 1px solid #cfe1e4; background: rgba(250, 253, 253, .92); border-radius: 16px; padding: 16px; box-shadow: 0 12px 34px rgba(30, 74, 82, .055); }
     .intent-panel-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 12px; }
@@ -149,7 +165,8 @@ export function renderLiveUi(): string {
       .shell { width: min(100% - 20px, 1180px); padding-top: 20px; }
       .topline { display: block; }
       .status { margin-top: 16px; }
-      .controls { grid-template-columns: 1fr 1fr; }
+      .controls { grid-template-columns: 1fr; }
+      .run-row { align-items: stretch; flex-direction: column; }
       button { grid-column: 1 / -1; }
       .api-config-grid { grid-template-columns: 1fr; }
       .api-config-grid button { grid-column: 1; }
@@ -157,6 +174,8 @@ export function renderLiveUi(): string {
       .dual-flow { grid-template-columns: 1fr; }
       .flow-arrow { transform: rotate(90deg); text-align: center; }
       .model-configs { grid-template-columns: 1fr; }
+      .core-results { grid-template-columns: 1fr; }
+      .advanced-options { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
       .resource-grid { grid-template-columns: 1fr; }
       .resource-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -173,27 +192,23 @@ export function renderLiveUi(): string {
   <main class="shell">
     <div class="topline">
       <div>
-        <div class="eyebrow">本地合成控制平面 / Local synthetic control plane</div>
-        <h1>RAN Agent 实时控制台 <span lang="en">/ Live Control Room</span></h1>
-        <p class="lede">实时观察自然语言意图解析、Intent IR、Pi Agent 单轮工具选择、确定性安全校验与 Function ACK。仅连接本地模拟器，不包含真实基站写操作，也不展示模型隐藏思维链。<span class="lede-en" lang="en">Observe intent parsing, structured Intent IR, one-shot Pi tool selection, deterministic safety checks, and Function ACK. Local simulation only; no live station writes or hidden chain-of-thought.</span></p>
+        <div class="eyebrow">双模型最小实验 / Minimal two-model experiment</div>
+        <h1>RAN Agent 双模型测试 <span lang="en">/ Two-model test</span></h1>
+        <p class="lede">只验证两件事：大模型能否把客户自然语言翻译成正确的 Intent JSON；基站小模型能否通过 Pi Agent 生成 Tool Call，并调用本地模拟 Function。<span class="lede-en" lang="en">Test only two things: large-model intent translation and small-model tool invocation through Pi Agent.</span></p>
       </div>
       <div class="status" id="status" data-state="connecting"><span class="dot"></span><span id="statusText">正在连接 SSE / Connecting</span></div>
     </div>
 
     <section class="controls" aria-label="Run controls">
       <div class="control intent-control">
-        <label for="naturalLanguage">运营商自然语言意图 / Operator intent</label>
+        <label for="naturalLanguage">客户自然语言意图 / Customer intent</label>
         <textarea id="naturalLanguage" maxlength="1200">请将 gnb-001 的 cell-01 设为低功耗模式，目标降低能耗 15%，但下行 P95 吞吐不得低于 50 Mbps，RRC 成功率不得低于 99%，并在 1 秒内完成执行确认。</textarea>
       </div>
-      <div class="control"><label for="intentMode">① 网管 Intent Agent / Management</label><select id="intentMode"><option value="synthetic">合成解析器 / Synthetic（无模型 / no model）</option><option value="intent-api" id="intentApiModeOption">远端大模型 API / Remote LLM（未配置）</option></select></div>
-      <div class="control"><label for="mode">② 基站 Pi Agent / Station</label><select id="mode"><option value="pi-faux">Pi Agent · faux（无模型 / no model）</option><option value="pi-api" id="stationApiModeOption">Pi Agent · 远端小模型 API / Remote small model</option><option value="rules">规则基线 / Rules baseline</option></select></div>
-      <div class="control"><label for="scenario">实验场景 / Scenario</label><select id="scenario"><option value="success">确认成功 / ACK success</option><option value="model_timeout">模型超时 / Model timeout → SAFE_NOOP</option><option value="du_timeout">Function 超时 / timeout → SAFE_NOOP</option></select></div>
-      <div class="control"><label for="demoPace">演示节奏 / Demo pace（不计入 SLA）</label><select id="demoPace"><option value="0">实时 / Real-time</option><option value="120">快速 / Fast · 120 ms</option><option value="300" selected>标准 / Standard · 300 ms</option><option value="700">慢速 / Slow · 700 ms</option></select></div>
-      <button type="button" id="run">解析意图并运行 / Parse &amp; run</button>
+      <div class="run-row"><span class="run-mode" id="runModeSummary">当前为演示模式；配置两套 API 后自动切换为真实双模型测试。</span><button type="button" id="run">运行演示 / Run demo</button></div>
     </section>
 
     <section class="dual-model-section" aria-labelledby="dualModelTitle">
-      <div class="dual-model-head"><h2 id="dualModelTitle">双模型 Agent 通道 / Two-model agent path</h2><span>两套配置、两段推理、一个受控 Intent IR / independent configs and inference</span></div>
+      <div class="dual-model-head"><h2 id="dualModelTitle">两个模型 / Two models</h2><span>大模型翻译，小模型调用工具 / translate → invoke</span></div>
       <div class="dual-flow">
         <div class="flow-agent" data-role="intent"><span>① 网管侧 / Management</span><strong>Intent Agent · 大模型 / Large model</strong><small id="intentLaneModel">当前：合成解析器，无模型推理<br />Natural language → Intent semantics</small></div>
         <div class="flow-arrow">→</div>
@@ -226,16 +241,38 @@ export function renderLiveUi(): string {
       <p class="capacity-note">两个 Key 相互独立，只保存在当前本地服务进程内存；不会写入文件、日志、浏览器存储或 Git。<br /><span lang="en">Both keys are independent and process-memory only; they are never persisted or returned to the browser.</span></p>
     </section>
 
-    <div class="intent-grid">
-      <section class="intent-panel" aria-labelledby="parseTraceTitle">
-        <div class="intent-panel-head"><h2 id="parseTraceTitle">① 网管 Intent Agent：自然语言 → Intent IR</h2><span id="parseState">等待输入 / Waiting</span></div>
-        <div class="parse-trace" id="parseTrace"><div class="intent-placeholder">运行任务后逐步展示解析阶段与输出。<br /><span lang="en">Run a task to see each parsing stage and output.</span></div></div>
-      </section>
-      <section class="intent-panel" aria-labelledby="intentIrTitle">
-        <div class="intent-panel-head"><h2 id="intentIrTitle">结构化 Intent IR / Structured intent</h2><span>完整 JSON / Full JSON</span></div>
-        <pre class="intent-json" id="intentJson">等待自然语言意图解析… / Waiting for parsing…</pre>
-      </section>
-    </div>
+    <section class="core-results" aria-label="Core two-model results">
+      <article class="result-card" data-step="1" aria-labelledby="intentIrTitle">
+        <div class="result-head"><h2 id="intentIrTitle">① 大模型输出：Intent JSON</h2><span class="result-state" id="parseState">等待输入 / Waiting</span></div>
+        <pre class="result-output" id="intentJson">等待大模型翻译客户意图… / Waiting for intent translation…</pre>
+      </article>
+      <article class="result-card" data-step="2" aria-labelledby="toolCallTitle">
+        <div class="result-head"><h2 id="toolCallTitle">② 小模型输出：Tool Call</h2><span class="trace-badge" id="piTraceBadge" data-source="idle">等待任务 / Waiting</span></div>
+        <pre class="result-output" id="toolCallJson">等待基站小模型通过 Pi Agent 生成工具调用… / Waiting for Pi tool call…</pre>
+      </article>
+      <article class="result-card" data-step="3" aria-labelledby="toolResultTitle">
+        <div class="result-head"><h2 id="toolResultTitle">③ 模拟工具执行结果</h2><span class="result-state" id="toolResultState">等待调用 / Waiting</span></div>
+        <pre class="result-output" id="toolResultJson">等待本地 Station Function 返回 ACTION_ACK… / Waiting for simulated function…</pre>
+      </article>
+    </section>
+
+    <details class="advanced-settings">
+      <summary>高级测试选项 / Advanced test options</summary>
+      <div class="advanced-options">
+        <div class="control"><label for="intentMode">网管解析方式 / Intent mode</label><select id="intentMode"><option value="synthetic">演示解析器（无模型）</option><option value="intent-api" id="intentApiModeOption">远端大模型 API（未配置）</option></select></div>
+        <div class="control"><label for="mode">基站决策方式 / Station mode</label><select id="mode"><option value="pi-faux">Pi faux（无模型）</option><option value="pi-api" id="stationApiModeOption">远端小模型 API</option><option value="rules">规则对照（高级）</option></select></div>
+        <div class="control"><label for="scenario">故障场景 / Scenario</label><select id="scenario"><option value="success">正常成功 / Success</option><option value="model_timeout">模型超时 / Model timeout</option><option value="du_timeout">工具超时 / Function timeout</option></select></div>
+        <div class="control"><label for="demoPace">展示速度 / Display pace</label><select id="demoPace"><option value="0">实时 / Real-time</option><option value="120">快速 / Fast</option><option value="300" selected>标准 / Standard</option><option value="700">慢速 / Slow</option></select></div>
+      </div>
+    </details>
+
+    <details class="advanced-lab">
+      <summary>高级信息：完整解析阶段、Pi 轨迹、时延与资源 / Advanced details</summary>
+      <div class="advanced-body">
+        <section class="intent-panel" aria-labelledby="parseTraceTitle">
+          <div class="intent-panel-head"><h2 id="parseTraceTitle">大模型解析阶段 / Intent parsing stages</h2><span>操作轨迹 / operational trace</span></div>
+          <div class="parse-trace" id="parseTrace"><div class="intent-placeholder">运行任务后显示详细解析阶段。 / Detailed stages appear after a run.</div></div>
+        </section>
 
     <section class="budget" aria-label="Control deadline">
       <div class="budget-head"><div><div class="eyebrow">基站控制 / Station control · Intent → Function ACK</div><strong id="elapsed">0 ms</strong></div><strong>1,000 ms SLA</strong></div>
@@ -277,7 +314,7 @@ export function renderLiveUi(): string {
     </div>
 
     <section class="call-panel" aria-labelledby="piTraceTitle">
-      <div class="resource-head"><h2 id="piTraceTitle">② 基站 Pi Agent：Intent IR → Tool Call / Execution trace</h2><span class="trace-badge" id="piTraceBadge" data-source="idle">等待任务 / Waiting</span></div>
+      <div class="resource-head"><h2 id="piTraceTitle">基站 Pi Agent 完整轨迹 / Full execution trace</h2><span>高级信息 / advanced</span></div>
       <p class="capacity-note">展示模型输入摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail 和 Function ACK；不展示隐藏思维链。<br /><span lang="en">Shows the model request summary, tool schemas, actual tool-call arguments, proposal, guardrail, and Function ACK—never hidden reasoning.</span></p>
       <div class="call-trace" id="piTrace"><div class="intent-placeholder">运行任务后显示真实框架调用轨迹；只有 Remote API 模式包含真实模型推理。<br /><span lang="en">Run a task to inspect the framework trace; only Remote API mode performs real model inference.</span></div></div>
     </section>
@@ -303,12 +340,15 @@ export function renderLiveUi(): string {
         <div class="events" id="events"><div class="empty">建立 SSE 后运行一个任务，事件将按顺序实时出现。<br /><span lang="en">Run a task after SSE connects; events appear in order.</span></div></div>
       </section>
     </div>
+      </div>
+    </details>
   </main>
   <script>
     const $ = (id) => document.getElementById(id);
     const status = $('status');
     const statusText = $('statusText');
     const runButton = $('run');
+    const runModeSummary = $('runModeSummary');
     const events = $('events');
     const elapsed = $('elapsed');
     const fill = $('budgetFill');
@@ -321,6 +361,9 @@ export function renderLiveUi(): string {
     const parseTrace = $('parseTrace');
     const parseState = $('parseState');
     const intentJson = $('intentJson');
+    const toolCallJson = $('toolCallJson');
+    const toolResultJson = $('toolResultJson');
+    const toolResultState = $('toolResultState');
     const resourcePhase = $('resourcePhase');
     const resourceCpu = $('resourceCpu');
     const resourceRss = $('resourceRss');
@@ -474,13 +517,15 @@ export function renderLiveUi(): string {
         ? '已配置 / Configured · ' + config.modelId
         : '未配置 / Not configured';
       if (role === 'intent') {
+        if (config.configured) intentModeSelect.value = 'intent-api';
         $('intentApiModeOption').textContent = config.configured
-          ? '远端大模型 / Remote LLM · ' + config.modelId
-          : '远端大模型 API / Remote LLM（未配置）';
+          ? '真实大模型 · ' + config.modelId
+          : '远端大模型 API（未配置）';
       } else {
+        if (config.configured) modeSelect.value = 'pi-api';
         $('stationApiModeOption').textContent = config.configured
-          ? 'Pi Agent · 远端小模型 / Remote · ' + config.modelId
-          : 'Pi Agent · 远端小模型 API / Remote（未配置）';
+          ? '真实小模型 · ' + config.modelId
+          : '远端小模型 API（未配置）';
       }
       renderSelectedModelLanes();
     }
@@ -494,6 +539,18 @@ export function renderLiveUi(): string {
         : modeSelect.value === 'pi-faux'
           ? '当前：faux 响应，无模型推理\\nIntent IR → Tool Call'
           : '当前：规则基线，无模型推理\\nIntent IR → Action';
+      const intentReal = intentModeSelect.value === 'intent-api' && modelConfigs.intent.configured;
+      const stationReal = modeSelect.value === 'pi-api' && modelConfigs.station.configured;
+      if (intentReal && stationReal) {
+        runModeSummary.textContent = '真实双模型：大模型翻译 Intent，小模型通过 Pi Agent 调用模拟工具。';
+        runButton.textContent = '运行真实双模型测试 / Run two-model test';
+      } else if (intentReal || stationReal) {
+        runModeSummary.textContent = '当前是混合模式；另一侧仍使用无模型演示。';
+        runButton.textContent = '运行混合测试 / Run mixed test';
+      } else {
+        runModeSummary.textContent = '当前为演示模式；配置两套 API 后自动切换为真实双模型测试。';
+        runButton.textContent = '运行演示 / Run demo';
+      }
     }
 
     runButton.addEventListener('click', async () => {
@@ -540,6 +597,9 @@ export function renderLiveUi(): string {
       parseTrace.append(waiting);
       parseState.textContent = '请求已提交 / Submitted';
       intentJson.textContent = '等待结构化 Intent IR… / Waiting for structured intent…';
+      toolCallJson.textContent = '等待基站小模型通过 Pi Agent 生成工具调用… / Waiting for Pi tool call…';
+      toolResultJson.textContent = '等待本地 Station Function 返回 ACTION_ACK… / Waiting for simulated function…';
+      toolResultState.textContent = '等待调用 / Waiting';
       setActive('nodeInput');
     }
 
@@ -625,6 +685,9 @@ export function renderLiveUi(): string {
       terminal.textContent = 'RUNNING';
       action.textContent = '—';
       version.textContent = '—';
+      toolCallJson.textContent = '正在等待小模型 Tool Call… / Waiting for small-model tool call…';
+      toolResultJson.textContent = '尚未调用模拟工具 / Function not called yet';
+      toolResultState.textContent = '等待调用 / Waiting';
       piTraceSequence = 0;
       piTrace.replaceChildren();
       const traceWaiting = document.createElement('div');
@@ -735,6 +798,37 @@ export function renderLiveUi(): string {
       events.scrollTop = events.scrollHeight;
       renderPiCallStep(message);
 
+      if (message.stream === 'pi-agent' && event.type === 'tool_execution_start') {
+        toolCallJson.textContent = formatStructuredValue({
+          name: event.toolName,
+          arguments: event.toolArguments,
+          source: 'Pi Agent small-model turn'
+        });
+      }
+      if (message.stream === 'runtime' && event.type === 'MODEL_COMPLETED' && modeSelect.value === 'rules') {
+        toolCallJson.textContent = formatStructuredValue({
+          proposal: event.detail?.proposal,
+          source: 'rules comparison; no model call'
+        });
+      }
+      if (message.stream === 'runtime' && event.type === 'TOOL_DISPATCHED') {
+        toolResultState.textContent = '已调用，等待 ACK / Dispatched';
+        toolResultJson.textContent = formatStructuredValue({
+          status: 'FUNCTION_DISPATCHED',
+          function: event.detail?.actionName,
+          target: event.detail?.target,
+          parameters: event.detail?.parameters
+        });
+      }
+      if (message.stream === 'runtime' && event.type === 'ACTION_ACK') {
+        toolResultState.textContent = '+' + ms + ' ms · ACTION_ACK';
+        toolResultJson.textContent = formatStructuredValue({ status: 'ACTION_ACK', result: event.detail });
+      }
+      if (message.stream === 'runtime' && (event.type === 'SAFE_NOOP' || event.type === 'REJECTED')) {
+        toolResultState.textContent = event.type;
+        toolResultJson.textContent = formatStructuredValue({ status: event.type, result: event.detail });
+      }
+
       if (event.type === 'MODEL_STARTED' || event.type === 'agent_start') setActive('nodeAgent');
       if (event.type === 'TOOL_DISPATCHED') {
         setActive('nodeDu');
@@ -805,6 +899,10 @@ export function renderLiveUi(): string {
       version.textContent = String(message.result.ack?.configVersion ?? version.textContent);
       updateBudget(message.result.elapsedMs, message.result.status);
       setStatus(message.result.status, message.result.status === 'succeeded' ? '收到 ACTION_ACK / received' : '安全终态 / Safe terminal state');
+      if (message.result.status !== 'succeeded' && toolResultState.textContent === '等待调用 / Waiting') {
+        toolResultState.textContent = message.result.status.toUpperCase();
+        toolResultJson.textContent = formatStructuredValue(message.result);
+      }
       setActive(null);
     }
 
@@ -812,6 +910,8 @@ export function renderLiveUi(): string {
       running = false;
       runButton.disabled = false;
       terminal.textContent = 'ERROR';
+      toolResultState.textContent = 'ERROR';
+      toolResultJson.textContent = formatStructuredValue({ error: message.error || 'Run failed' });
       setStatus('rejected', message.error || '运行失败 / Run failed');
       setActive(null);
     }

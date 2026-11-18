@@ -17,21 +17,28 @@ const NATURAL_LANGUAGE = "请将 gnb-001 的 cell-01 设为低功耗模式，目
 test("renders a self-contained live console with local SSE and run controls", () => {
   const page = renderLiveUi();
 
-  assert.match(page, /RAN Agent 实时控制台/);
-  assert.match(page, /Live Control Room/);
+  assert.match(page, /RAN Agent 双模型测试/);
+  assert.match(page, /Two-model test/);
+  assert.match(page, /只验证两件事/);
   assert.match(page, /new EventSource\('\/api\/events'\)/);
   assert.match(page, /fetch\('\/api\/run'/);
   assert.match(page, /intent_parse_stage/);
-  assert.match(page, /结构化 Intent IR/);
+  assert.match(page, /① 大模型输出：Intent JSON/);
+  assert.match(page, /② 小模型输出：Tool Call/);
+  assert.match(page, /③ 模拟工具执行结果/);
+  assert.match(page, /id="toolCallJson"/);
+  assert.match(page, /id="toolResultJson"/);
   assert.match(page, /naturalLanguage/);
-  assert.match(page, /无模型 \/ no model/);
-  assert.match(page, /双模型 Agent 通道 \/ Two-model agent path/);
+  assert.match(page, /两个模型 \/ Two models/);
   assert.match(page, /网管大模型 API \/ Management LLM/);
   assert.match(page, /基站小模型 API \/ Station model/);
   assert.match(page, /基站阶段运行资源 \/ Station-stage resources/);
   assert.match(page, /基站小模型芯片容量规划 \/ Station capacity/);
-  assert.match(page, /演示节奏 \/ Demo pace/);
-  assert.match(page, /基站 Pi Agent：Intent IR → Tool Call \/ Execution trace/);
+  assert.match(page, /高级测试选项 \/ Advanced test options/);
+  assert.match(page, /高级信息：完整解析阶段、Pi 轨迹、时延与资源/);
+  assert.match(page, /基站 Pi Agent 完整轨迹 \/ Full execution trace/);
+  assert.doesNotMatch(page, /<details class="advanced-(?:settings|lab)" open/);
+  assert.doesNotMatch(page, /规则极限/);
   assert.match(page, /id="intentApiBaseUrl"/);
   assert.match(page, /id="stationApiBaseUrl"/);
   assert.match(page, /id="intentApiKey" type="password"/);
