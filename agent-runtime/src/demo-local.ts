@@ -3,9 +3,15 @@ import { PiStationAgentAdapter } from "./pi-adapter.ts";
 import { createLocalPiRunner } from "./pi-local.ts";
 import { StationAgentRuntime } from "./runtime.ts";
 
-const modelId = process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B";
+const modelId = process.env.RAN_MODEL_ID ?? "qwen3:0.6b";
 const runner = createLocalPiRunner({
   onEvent: (event) => process.stdout.write(`${JSON.stringify({ stream: "pi-agent", ...event })}\n`),
+  onPayload: process.env.RAN_DEBUG_PROVIDER === "1"
+    ? (payload) => { process.stdout.write(`${JSON.stringify({ stream: "provider-payload", payload })}\n`); }
+    : undefined,
+  onProviderStreamEvent: process.env.RAN_DEBUG_PROVIDER === "1"
+    ? (data) => { process.stdout.write(`${JSON.stringify({ stream: "provider-event", data })}\n`); }
+    : undefined,
 });
 const runtime = new StationAgentRuntime(
   new PiStationAgentAdapter(runner, modelId),
@@ -40,7 +46,7 @@ const result = await runtime.run({
   allowedActions: ["set_energy_saving_mode"],
   execution: {
     controlDeadlineMs: 1_000,
-    maxInferenceMs: 450,
+    maxInferenceMs: 800,
     maxCells: 1,
     completionSemantics: "ACTION_ACK",
     timeoutPolicy: "SAFE_NOOP",

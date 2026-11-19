@@ -31,7 +31,7 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /naturalLanguage/);
   assert.match(page, /两个模型 \/ Two models/);
   assert.match(page, /网管大模型 API \/ Management LLM/);
-  assert.match(page, /基站小模型 API \/ Station model/);
+  assert.match(page, /基站本地小模型 \/ Local station model/);
   assert.match(page, /基站阶段运行资源 \/ Station-stage resources/);
   assert.match(page, /基站小模型芯片容量规划 \/ Station capacity/);
   assert.match(page, /高级测试选项 \/ Advanced test options/);
@@ -44,11 +44,14 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /id="intentApiKey" type="password"/);
   assert.match(page, /id="stationApiKey" type="password"/);
   assert.match(page, /fetch\('\/api\/model-config\?role='/);
-  assert.match(page, /两个 Key 相互独立/);
+  assert.match(page, /本机 Ollama 小模型无需 Key/);
+  assert.match(page, /local_resource_sample/);
+  assert.match(page, /id="resourceGpu"/);
+  assert.match(page, /id="resourceModelMemory"/);
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
-  assert.doesNotMatch(page, /https?:\/\//, "the live UI must not depend on remote assets");
+  assert.doesNotMatch(page, /(?:src|href)=["']https?:\/\//, "the live UI must not depend on remote assets");
   const inlineScript = page.match(/<script>([\s\S]*)<\/script>/)?.[1];
   assert.ok(inlineScript);
   assert.doesNotThrow(() => new vm.Script(inlineScript, { filename: "live-ui-inline.js" }));

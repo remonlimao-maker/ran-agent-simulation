@@ -1,3 +1,5 @@
+import type { LocalModelHardwareSummary } from "./local-model-telemetry.ts";
+
 export type ResourcePhase = "guardrail" | "inference" | "function" | "complete";
 export type ResourceBackend = "rules" | "pi-faux" | "pi-api";
 export type ModelPrecision = "INT4" | "INT8" | "BF16";
@@ -47,8 +49,8 @@ export interface ResourceSummary {
   schemaVersion: "0.1";
   backend: ResourceBackend;
   modelId: string;
-  measurementScope: "agent_client_process";
-  modelServerMetrics: "not_applicable" | "not_visible_from_api_client";
+  measurementScope: "agent_client_process" | "agent_and_local_model";
+  modelServerMetrics: "not_applicable" | "not_visible_from_api_client" | "local_observed" | "local_unavailable";
   wallTimeMs: number;
   processCpuTimeMs: number;
   peakProcessCpuPercent: number;
@@ -57,6 +59,7 @@ export interface ResourceSummary {
   samples: number;
   tokenUsage: ResourceTokenUsage | null;
   capacityEstimate: ModelCapacityEstimate;
+  localModel?: LocalModelHardwareSummary;
   caveats: string[];
 }
 
@@ -223,7 +226,10 @@ export function estimateModelCapacity(options: {
   const kvCacheMiB = kvCacheBytes / 1024 / 1024;
   const modelRuntimeGiB = (rawWeightGiB + kvCacheMiB / 1024 + 0.35) * 1.25;
   const dualSlotStorageGB = rawWeightGB * 1.2 * 2 + 0.25;
-  const targetDecodeTokensPerSecond = targetOutputTokens / (inferenceBudgetMs / 1_000);
+  // Keep 25% of the inference budget for prompt prefill, API/runtime overhead,
+  // and jitter; decoding is not allowed to consume the entire budget.
+  const decodeBudgetMs = inferenceBudgetMs * 0.75;
+  const targetDecodeTokensPerSecond = targetOutputTokens / (decodeBudgetMs / 1_000);
   const computeLowerBoundTops = 2 * totalParametersB * 1e9 * targetDecodeTokensPerSecond / 1e12;
   const weightBandwidthLowerBoundGBps = rawWeightGB * targetDecodeTokensPerSecond;
   const provisionalChipTops = computeLowerBoundTops / 0.25 * 2;
@@ -251,6 +257,7 @@ export function estimateModelCapacity(options: {
       "Dense decoder; approximately two operations per parameter per generated token.",
       "INT4/INT8/BF16 weight bytes exclude backend-specific quantization metadata.",
       "KV cache uses the Qwen3-0.6B reference geometry and BF16 K/V values.",
+      "Twenty-five percent of the inference budget is reserved for prefill, runtime overhead, and jitter.",
       "Provisional chip target assumes 25% effective compute utilization and 2x margin.",
       "Provisional bandwidth assumes 65% effective bandwidth and 1.5x margin.",
       "Storage keeps active and rollback model slots plus tokenizer/runtime allowance.",
@@ -271,5 +278,5 @@ function round(value: number): number {
 }
 
 function roundUp(value: number, step: number): number {
-  return Math.ceil(value / step) * step;
+  return round(Math.ceil(value / step) * step);
 }

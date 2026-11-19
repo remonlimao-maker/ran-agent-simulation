@@ -51,9 +51,14 @@ export interface ExperimentRunRow {
   ackDelayMs: number;
   synthetic: boolean;
   status: RunStatus;
+  taskCorrect: boolean;
+  toolExactMatch: boolean;
+  parameterExactMatch: boolean;
   safeCompleted: boolean;
   deadlineMet: boolean;
   actionApplied: boolean;
+  proposedActionName: string | null;
+  proposedMode: string | null;
   elapsedMs: number;
   clientRssMiB: number;
   terminalEvent: string;
@@ -68,6 +73,9 @@ export interface ConditionSummary {
   slaMs: number;
   simulatedModelLatencyMs: number | null;
   runs: number;
+  taskCorrectRate: number;
+  toolExactMatchRate: number;
+  parameterExactMatchRate: number;
   safeCompletionRate: number;
   timeoutRate: number;
   rejectionRate: number;
@@ -114,6 +122,14 @@ export async function runExperiment(config: ExperimentConfig): Promise<Experimen
           const rssBefore = process.memoryUsage().rss;
           const result = await runtime.run(makeIntent(slaMs, maxInferenceMs));
           const rssAfter = process.memoryUsage().rss;
+          const proposal = proposalFromResult(result);
+          const toolExactMatch = proposal?.actionName === "set_energy_saving_mode"
+            && proposal.target?.gnbId === "gnb-001"
+            && proposal.target?.cellId === "cell-01";
+          const parameterExactMatch = toolExactMatch && proposal?.parameters?.mode === "LOW_POWER";
+          const taskCorrect = result.status === "succeeded"
+            && parameterExactMatch
+            && result.ack?.applied === true;
           rows.push({
             experimentId,
             runId: `${precision}-${startState}-${slaMs}-${runIndex + 1}`,
@@ -127,9 +143,14 @@ export async function runExperiment(config: ExperimentConfig): Promise<Experimen
             ackDelayMs: config.ackDelayMs,
             synthetic: config.mode !== "pi-local",
             status: result.status,
-            safeCompleted: result.status === "succeeded" && result.slaMet,
+            taskCorrect,
+            toolExactMatch,
+            parameterExactMatch,
+            safeCompleted: taskCorrect && result.slaMet,
             deadlineMet: result.slaMet,
             actionApplied: result.ack?.applied ?? false,
+            proposedActionName: proposal?.actionName ?? null,
+            proposedMode: typeof proposal?.parameters?.mode === "string" ? proposal.parameters.mode : null,
             elapsedMs: result.elapsedMs,
             clientRssMiB: roundMiB(Math.max(rssBefore, rssAfter)),
             terminalEvent: result.events.at(-1)?.type ?? "UNKNOWN",
@@ -175,6 +196,9 @@ export function summarizeConditions(rows: ExperimentRunRow[]): ConditionSummary[
       slaMs: first.slaMs,
       simulatedModelLatencyMs: first.simulatedModelLatencyMs,
       runs: group.length,
+      taskCorrectRate: rate(group, (row) => row.taskCorrect),
+      toolExactMatchRate: rate(group, (row) => row.toolExactMatch),
+      parameterExactMatchRate: rate(group, (row) => row.parameterExactMatch),
       safeCompletionRate: rate(group, (row) => row.safeCompleted),
       timeoutRate: rate(group, (row) => row.status === "safe_timeout"),
       rejectionRate: rate(group, (row) => row.status === "rejected"),
@@ -191,7 +215,8 @@ export function runsToCsv(rows: ExperimentRunRow[]): string {
   const columns: Array<keyof ExperimentRunRow> = [
     "experimentId", "runId", "mode", "modelId", "precision", "startState", "slaMs",
     "maxInferenceMs", "simulatedModelLatencyMs", "ackDelayMs", "synthetic", "status",
-    "safeCompleted", "deadlineMet", "actionApplied", "elapsedMs", "clientRssMiB",
+    "taskCorrect", "toolExactMatch", "parameterExactMatch", "safeCompleted", "deadlineMet",
+    "actionApplied", "proposedActionName", "proposedMode", "elapsedMs", "clientRssMiB",
     "terminalEvent", "reason",
   ];
   return [
@@ -219,7 +244,7 @@ function createAgent(config: ExperimentConfig, syntheticDelayMs: number): Statio
       modelId: config.modelId,
       apiKey: config.apiKey,
     });
-    return new PiStationAgentAdapter(runner, config.modelId ?? process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B");
+    return new PiStationAgentAdapter(runner, config.modelId ?? process.env.RAN_MODEL_ID ?? "qwen3:0.6b");
   }
 
   const faux = fauxProvider();
@@ -324,6 +349,18 @@ function provenanceCaveats(mode: ExperimentMode): string[] {
     "Rules mode is the deterministic lower-bound baseline and performs no model inference.",
     "Client RSS covers this Node process only.",
   ];
+}
+
+function proposalFromResult(result: Awaited<ReturnType<StationAgentRuntime["run"]>>): ActionProposalLike | undefined {
+  const event = result.events.find((candidate) => candidate.type === "MODEL_COMPLETED");
+  const proposal = event?.detail.proposal;
+  return proposal && typeof proposal === "object" ? proposal as ActionProposalLike : undefined;
+}
+
+interface ActionProposalLike {
+  actionName?: string;
+  target?: { gnbId?: string; cellId?: string };
+  parameters?: Record<string, unknown>;
 }
 
 function rate<T>(items: T[], predicate: (item: T) => boolean): number {

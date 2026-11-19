@@ -43,7 +43,10 @@ export class PiStationAgentAdapter implements StationDecisionAgent {
   async decide(input: DecisionInput, context: DecisionContext): Promise<ActionProposal> {
     const response = await this.#runner.runOneShot({
       system:
-        "Choose exactly one supplied RAN tool. Never invent targets or parameters. " +
+        "Choose exactly one supplied RAN tool. " +
+        "If objective.metric is energy_consumption and objective.direction is decrease, mode MUST be LOW_POWER and MUST NOT be ACTIVE. " +
+        "If objective.metric is energy_consumption and objective.direction is increase, mode MUST be ACTIVE and MUST NOT be LOW_POWER. " +
+        "Never return the current value. Tool arguments must contain exactly the schema keys; never copy metrics or invent parameters. " +
         "Return a tool call only; the deterministic runtime performs all safety checks.",
       input,
       tools: input.tools,

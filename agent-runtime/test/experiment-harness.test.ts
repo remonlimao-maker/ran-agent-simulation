@@ -18,7 +18,9 @@ test("runs a reproducible rules baseline matrix and summarizes each SLA", async 
 
   assert.equal(report.rows.length, 4);
   assert.equal(report.summaries.length, 2);
+  assert.equal(report.rows.every((row) => row.taskCorrect), true);
   assert.equal(report.rows.every((row) => row.safeCompleted), true);
+  assert.equal(report.summaries.every((summary) => summary.taskCorrectRate === 1), true);
   assert.equal(report.summaries.every((summary) => summary.safeCompletionRate === 1), true);
   assert.match(report.provenance.caveats.join(" "), /lower-bound baseline/);
 });
@@ -80,9 +82,14 @@ function row(elapsedMs: number, index: number): ExperimentRunRow {
     ackDelayMs: 1,
     synthetic: true,
     status: index === 3 ? "rejected" : "succeeded",
+    taskCorrect: index !== 3,
+    toolExactMatch: index !== 3,
+    parameterExactMatch: index !== 3,
     safeCompleted: index !== 3,
     deadlineMet: true,
     actionApplied: index !== 3,
+    proposedActionName: index === 3 ? null : "set_energy_saving_mode",
+    proposedMode: index === 3 ? null : "LOW_POWER",
     elapsedMs,
     clientRssMiB: 80 + index,
     terminalEvent: index === 3 ? "REJECTED" : "ACTION_ACK",

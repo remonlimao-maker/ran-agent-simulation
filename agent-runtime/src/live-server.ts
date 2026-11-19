@@ -13,10 +13,11 @@ import {
 import { DuSimulator } from "./du-simulator.ts";
 import { parseNaturalLanguageIntentWithModel } from "./intent-model.ts";
 import { parseNaturalLanguageIntent, type IntentParseStage } from "./intent-parser.ts";
+import { isLoopbackModelUrl, LocalModelTelemetryMonitor } from "./local-model-telemetry.ts";
 import { PiStationAgentAdapter } from "./pi-adapter.ts";
 import { createLocalPiRunner } from "./pi-local.ts";
 import { PiAgentOneShotRunner, type PiAuditEvent } from "./pi-runner.ts";
-import { estimateModelCapacity, InferenceResourceMonitor } from "./resource-monitor.ts";
+import { estimateModelCapacity, InferenceResourceMonitor, type ResourcePhase } from "./resource-monitor.ts";
 import { RuleBasedAgent } from "./rule-agent.ts";
 import { StationAgentRuntime } from "./runtime.ts";
 import { renderLiveUi } from "./live-ui.ts";
@@ -59,7 +60,8 @@ export interface PublicRemoteModelConfig {
 }
 
 const DEFAULT_INTENT_MODEL_ID = "Qwen/Qwen3-8B";
-const DEFAULT_STATION_MODEL_ID = "Qwen/Qwen3-0.6B";
+const DEFAULT_STATION_BASE_URL = "http://127.0.0.1:11434/v1";
+const DEFAULT_STATION_MODEL_ID = "qwen3:0.6b";
 
 interface LiveMessage {
   kind:
@@ -69,6 +71,7 @@ interface LiveMessage {
     | "intent_parse_stage"
     | "intent_ir_ready"
     | "resource_sample"
+    | "local_resource_sample"
     | "resource_summary"
     | "event"
     | "run_complete"
@@ -129,7 +132,7 @@ export function createLiveControlServer(): LiveControlServer {
           remoteModelId: modelConfigs.station.modelId,
           capacityEstimate: estimateModelCapacity({
             modelId: modelConfigs.station.modelId,
-            inferenceBudgetMs: 450,
+            inferenceBudgetMs: 800,
           }),
         });
         return;
@@ -220,13 +223,13 @@ export function createLiveControlServer(): LiveControlServer {
           intentResponseSource: parsed.value.intentMode === "intent-api" ? "remote_api" : "synthetic_parser",
           stationModelId: modelIdForMode(parsed.value.mode, taskModelConfigs.station),
           stationResponseSource: parsed.value.mode === "pi-api"
-            ? "remote_api"
+            ? (isLoopbackModelUrl(taskModelConfigs.station.baseUrl) ? "local_model" : "remote_api")
             : parsed.value.mode === "pi-faux"
               ? "preset_fixture"
               : "no_model",
           modelId: modelIdForMode(parsed.value.mode, taskModelConfigs.station),
           modelResponseSource: parsed.value.mode === "pi-api"
-            ? "remote_api"
+            ? (isLoopbackModelUrl(taskModelConfigs.station.baseUrl) ? "local_model" : "remote_api")
             : parsed.value.mode === "pi-faux"
               ? "preset_fixture"
               : "no_model",
@@ -334,7 +337,16 @@ export async function runSyntheticTask(
     sampleIntervalMs: options.resourceSampleIntervalMs,
     onSample: (sample) => broadcast({ kind: "resource_sample", runId, sample }),
   });
+  const localModelMonitor = request.mode === "pi-api" && isLoopbackModelUrl(modelConfigs.station.baseUrl)
+    ? new LocalModelTelemetryMonitor({
+      baseUrl: modelConfigs.station.baseUrl,
+      modelId: modelConfigs.station.modelId,
+      sampleIntervalMs: 100,
+      onSample: (sample) => broadcast({ kind: "local_resource_sample", runId, sample }),
+    })
+    : undefined;
   resourceMonitor.start();
+  localModelMonitor?.start();
   let unsubscribe: () => void = () => undefined;
 
   try {
@@ -351,6 +363,7 @@ export async function runSyntheticTask(
     const runtime = new StationAgentRuntime(decisionAgent, du);
     unsubscribe = runtime.subscribe((event) => {
       updateResourcePhase(resourceMonitor, event.type);
+      if (localModelMonitor) updateResourcePhase(localModelMonitor, event.type);
       broadcast({
         kind: "event",
         runId,
@@ -362,7 +375,22 @@ export async function runSyntheticTask(
     return await runtime.run(parsed.intent);
   } finally {
     unsubscribe();
-    broadcast({ kind: "resource_summary", runId, summary: resourceMonitor.stop() });
+    const summary = resourceMonitor.stop();
+    if (localModelMonitor) {
+      summary.localModel = await localModelMonitor.stop(summary.tokenUsage);
+      summary.measurementScope = "agent_and_local_model";
+      summary.modelServerMetrics = summary.localModel.available ? "local_observed" : "local_unavailable";
+      summary.caveats = summary.localModel.available
+        ? [
+          "Agent CPU/RSS and local model/GPU metrics are measured separately.",
+          ...summary.localModel.notes,
+        ]
+        : [
+          "The endpoint is local, but model/GPU counters were unavailable for this run.",
+          "Capacity values remain analytical estimates until local telemetry is available.",
+        ];
+    }
+    broadcast({ kind: "resource_summary", runId, summary });
   }
 }
 
@@ -549,9 +577,12 @@ export function publicModelConfig(role: ModelRole, config: RemoteModelConfig): P
 }
 
 function modelConfigFromEnvironment(role: ModelRole): RemoteModelConfig {
+  const environmentBaseUrl = role === "intent"
+    ? process.env.RAN_INTENT_MODEL_BASE_URL?.trim()
+    : process.env.RAN_STATION_MODEL_BASE_URL?.trim() || process.env.RAN_MODEL_BASE_URL?.trim();
   const baseUrl = role === "intent"
-    ? process.env.RAN_INTENT_MODEL_BASE_URL?.trim() ?? ""
-    : process.env.RAN_STATION_MODEL_BASE_URL?.trim() ?? process.env.RAN_MODEL_BASE_URL?.trim() ?? "";
+    ? environmentBaseUrl ?? ""
+    : environmentBaseUrl ?? DEFAULT_STATION_BASE_URL;
   const modelId = role === "intent"
     ? process.env.RAN_INTENT_MODEL_ID?.trim() || DEFAULT_INTENT_MODEL_ID
     : process.env.RAN_STATION_MODEL_ID?.trim() || process.env.RAN_MODEL_ID?.trim() || DEFAULT_STATION_MODEL_ID;
@@ -562,7 +593,7 @@ function modelConfigFromEnvironment(role: ModelRole): RemoteModelConfig {
     baseUrl,
     modelId,
     apiKey,
-    source: baseUrl ? "environment" : "default",
+    source: environmentBaseUrl ? "environment" : "default",
   };
 }
 
@@ -577,7 +608,7 @@ function modelIdForMode(mode: RunMode, remoteModelConfig: RemoteModelConfig): st
   return "rules baseline (no model)";
 }
 
-function updateResourcePhase(monitor: InferenceResourceMonitor, eventType: string): void {
+function updateResourcePhase(monitor: { setPhase(phase: ResourcePhase): void }, eventType: string): void {
   if (eventType === "MODEL_STARTED") monitor.setPhase("inference");
   else if (eventType === "MODEL_COMPLETED" || eventType === "PLAN_VALIDATED") monitor.setPhase("guardrail");
   else if (eventType === "TOOL_DISPATCHED") monitor.setPhase("function");

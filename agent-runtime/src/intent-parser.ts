@@ -103,7 +103,7 @@ export async function parseNaturalLanguageIntent(
 
   const controlDeadlineMs = extractDeadlineMs(naturalLanguage);
   const maxInferenceMs = Math.min(
-    options.scenario === "model_timeout" ? 120 : 450,
+    options.scenario === "model_timeout" ? 120 : 800,
     Math.max(1, controlDeadlineMs - 50),
   );
   const execution: StationIntent["execution"] = {

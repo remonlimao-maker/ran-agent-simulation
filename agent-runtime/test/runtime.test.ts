@@ -84,6 +84,23 @@ test("rejects an out-of-scope target before dispatch", async () => {
   assert.equal(result.events.some((event) => event.type === "TOOL_DISPATCHED"), false);
 });
 
+test("rejects a model proposal that repeats the current value", async () => {
+  const du = makeDu();
+  const runtime = new StationAgentRuntime(new FixedAgent({
+    actionName: "set_energy_saving_mode",
+    target: { gnbId: "gnb-001", cellId: "cell-01" },
+    parameters: { mode: "ACTIVE" },
+    expectedConfigVersion: 7,
+  }), du, { now: () => FIXED_NOW });
+
+  const result = await runtime.run(makeIntent());
+
+  assert.equal(result.status, "rejected");
+  assert.equal(result.events.at(-1)?.detail.code, "NO_EFFECT_ACTION");
+  assert.equal(result.events.some((event) => event.type === "TOOL_DISPATCHED"), false);
+  assert.equal(du.getSnapshot("gnb-001", "cell-01").configVersion, 7);
+});
+
 test("rejects an expired intent before model invocation", async () => {
   const du = makeDu();
   const agent = new CountingAgent();

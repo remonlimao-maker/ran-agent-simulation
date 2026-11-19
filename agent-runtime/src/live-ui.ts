@@ -129,6 +129,7 @@ export function renderLiveUi(): string {
     .call-panel { margin-top: 16px; border: 1px solid #cfdfe3; background: var(--panel); border-radius: 18px; padding: 18px; box-shadow: 0 14px 42px rgba(30, 74, 82, .07); }
     .trace-badge { display: inline-flex; align-items: center; border: 1px solid #d7e4e7; border-radius: 999px; padding: 5px 9px; background: #f5fafb; color: var(--muted); font-size: 10px; font-weight: 800; }
     .trace-badge[data-source="remote_api"] { border-color: #9dd9be; background: #edf9f3; color: #126a4c; }
+    .trace-badge[data-source="local_model"] { border-color: #80c8d5; background: #eaf8fb; color: #126172; }
     .trace-badge[data-source="preset_fixture"] { border-color: #edcc98; background: #fff7e9; color: #89550a; }
     .call-trace { max-height: 430px; overflow: auto; display: grid; gap: 8px; padding-right: 3px; }
     .call-step { display: grid; grid-template-columns: 48px minmax(170px, .55fr) minmax(0, 1.45fr); gap: 10px; align-items: start; border: 1px solid #e0e9eb; border-left: 3px solid var(--cyan); border-radius: 0 11px 11px 0; padding: 10px; background: #fbfdfd; }
@@ -214,7 +215,7 @@ export function renderLiveUi(): string {
         <div class="flow-arrow">→</div>
         <div class="flow-contract"><span>受控契约 / Contract</span><strong>Intent IR v0.1</strong><small>Schema + validity + action allowlist</small></div>
         <div class="flow-arrow">→</div>
-        <div class="flow-agent" data-role="station"><span>② 基站侧 / Station</span><strong>Pi Agent · 轻量小模型 / ≈0.8B</strong><small id="stationLaneModel">当前：faux 响应，无模型推理<br />Intent IR → Tool Call</small></div>
+        <div class="flow-agent" data-role="station"><span>② 基站侧 / Station</span><strong>Pi Agent · 本地轻量模型 / Local ≈0.8B</strong><small id="stationLaneModel">当前：本机 Qwen3-0.6B<br />Intent IR → Tool Call</small></div>
       </div>
       <div class="model-configs">
         <article class="api-config" data-role="intent" aria-labelledby="intentApiConfigTitle">
@@ -228,17 +229,17 @@ export function renderLiveUi(): string {
           <p class="api-config-message" id="intentApiConfigMessage">负责自然语言 → 结构化 Intent IR；模型输出仍须通过确定性 Schema 校验。</p>
         </article>
         <article class="api-config" data-role="station" aria-labelledby="stationApiConfigTitle">
-          <div class="api-config-head"><h2 id="stationApiConfigTitle">② 基站小模型 API / Station model</h2><span class="api-config-state" id="stationApiConfigState" data-configured="false">未配置 / Not configured</span></div>
+          <div class="api-config-head"><h2 id="stationApiConfigTitle">② 基站本地小模型 / Local station model</h2><span class="api-config-state" id="stationApiConfigState" data-configured="false">正在检测 / Detecting</span></div>
           <div class="api-config-grid">
-            <div class="control endpoint"><label for="stationApiBaseUrl">OpenAI-compatible Base URL</label><input id="stationApiBaseUrl" type="url" inputmode="url" spellcheck="false" placeholder="基站侧约 0.8B 模型 /v1 endpoint" /></div>
-            <div class="control"><label for="stationApiModelId">小模型 ID / Small model ID</label><input id="stationApiModelId" type="text" spellcheck="false" value="Qwen/Qwen3-0.6B" /></div>
-            <div class="control"><label for="stationApiKey">API Key（可选）</label><input id="stationApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="仅当前进程内存" /></div>
-            <button type="button" id="saveStationApiConfig">保存基站模型配置 / Apply station model</button>
+            <div class="control endpoint"><label for="stationApiBaseUrl">本机推理地址 / Local endpoint</label><input id="stationApiBaseUrl" type="url" inputmode="url" spellcheck="false" value="http://127.0.0.1:11434/v1" /></div>
+            <div class="control"><label for="stationApiModelId">小模型 ID / Small model ID</label><input id="stationApiModelId" type="text" spellcheck="false" value="qwen3:0.6b" /></div>
+            <div class="control"><label for="stationApiKey">API Key（本机无需）</label><input id="stationApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Ollama 本机无需填写" /></div>
+            <button type="button" id="saveStationApiConfig">连接本机模型 / Connect local model</button>
           </div>
-          <p class="api-config-message" id="stationApiConfigMessage">负责 Intent IR → Pi Tool Call；目标是基站侧 1 秒内完成 Function ACK。</p>
+          <p class="api-config-message" id="stationApiConfigMessage">本机 Qwen3-0.6B 负责 Intent IR → Pi Tool Call；采集模型驻留内存、GPU 利用率与实测时延。</p>
         </article>
       </div>
-      <p class="capacity-note">两个 Key 相互独立，只保存在当前本地服务进程内存；不会写入文件、日志、浏览器存储或 Git。<br /><span lang="en">Both keys are independent and process-memory only; they are never persisted or returned to the browser.</span></p>
+      <p class="capacity-note">网管远程大模型需要 Key；本机 Ollama 小模型无需 Key。任何填写的 Key 只保存在当前进程内存，不写入文件、浏览器存储或 Git。</p>
     </section>
 
     <section class="core-results" aria-label="Core two-model results">
@@ -260,7 +261,7 @@ export function renderLiveUi(): string {
       <summary>高级测试选项 / Advanced test options</summary>
       <div class="advanced-options">
         <div class="control"><label for="intentMode">网管解析方式 / Intent mode</label><select id="intentMode"><option value="synthetic">演示解析器（无模型）</option><option value="intent-api" id="intentApiModeOption">远端大模型 API（未配置）</option></select></div>
-        <div class="control"><label for="mode">基站决策方式 / Station mode</label><select id="mode"><option value="pi-faux">Pi faux（无模型）</option><option value="pi-api" id="stationApiModeOption">远端小模型 API</option><option value="rules">规则对照（高级）</option></select></div>
+        <div class="control"><label for="mode">基站决策方式 / Station mode</label><select id="mode"><option value="pi-api" id="stationApiModeOption">本机 Qwen3-0.6B</option><option value="pi-faux">Pi faux（无模型）</option><option value="rules">规则对照（高级）</option></select></div>
         <div class="control"><label for="scenario">故障场景 / Scenario</label><select id="scenario"><option value="success">正常成功 / Success</option><option value="model_timeout">模型超时 / Model timeout</option><option value="du_timeout">工具超时 / Function timeout</option></select></div>
         <div class="control"><label for="demoPace">展示速度 / Display pace</label><select id="demoPace"><option value="0">实时 / Real-time</option><option value="120">快速 / Fast</option><option value="300" selected>标准 / Standard</option><option value="700">慢速 / Slow</option></select></div>
       </div>
@@ -290,12 +291,18 @@ export function renderLiveUi(): string {
           <div class="resource-metric"><span>Heap 峰值 / Peak</span><strong id="resourceHeap">—</strong></div>
           <div class="resource-metric"><span>Token 输入/输出 / I/O</span><strong id="resourceTokens">—</strong></div>
           <div class="resource-metric"><span>模型耗时 / Model time</span><strong id="resourceModelTime">—</strong></div>
+          <div class="resource-metric"><span>GPU 采样峰值 / Sampled peak</span><strong id="resourceGpu">—</strong></div>
+          <div class="resource-metric"><span>模型驻留 / Resident</span><strong id="resourceModelMemory">—</strong></div>
+          <div class="resource-metric"><span>实测吞吐 / Output rate</span><strong id="resourceOutputRate">—</strong></div>
+          <div class="resource-metric"><span>工作负载等效算力 / Effective TOPS</span><strong id="resourceEffectiveTops">—</strong></div>
+          <div class="resource-metric"><span>工作负载等效带宽 / Weight BW</span><strong id="resourceEffectiveBandwidth">—</strong></div>
+          <div class="resource-metric"><span>量化 / Quantization</span><strong id="resourceQuantization">—</strong></div>
         </div>
         <div class="resource-bars">
           <div><div class="resource-bar-head"><span>单核 CPU / one-core scale</span><span id="cpuBarLabel">0%</span></div><div class="resource-bar"><span id="cpuBar"></span></div></div>
           <div><div class="resource-bar-head"><span>Agent RSS / 512 MiB reference</span><span id="rssBarLabel">0 MiB</span></div><div class="resource-bar"><span id="rssBar"></span></div></div>
         </div>
-        <p class="capacity-note" id="resourceCaveat">只测当前 Node Agent；远端 API 的服务端算力、显存和功耗不可由客户端直接看到。<br /><span lang="en">Measures this Node Agent only; a hosted API does not expose server compute, memory, or power.</span></p>
+        <p class="capacity-note" id="resourceCaveat">本机模式分别采样 Agent、Ollama 模型驻留内存与系统 GPU；有效 TOPS 和带宽是由本次实测吞吐推导的工作负载等效值，不是芯片峰值计数器。</p>
       </section>
 
       <section class="resource-card" aria-labelledby="capacityTitle">
@@ -308,7 +315,7 @@ export function renderLiveUi(): string {
           <div class="resource-metric"><span>原始权重 / Raw weights</span><strong id="capacityWeights">—</strong></div>
           <div class="resource-metric"><span>目标解码 / Decode</span><strong id="capacityDecode">—</strong></div>
         </div>
-        <p class="capacity-note" id="capacityProfile">默认规划：约 0.8B 总参数、INT4、512-token 上下文、32-token 输出、450 ms 推理预算。</p>
+        <p class="capacity-note" id="capacityProfile">默认规划：约 0.8B 总参数、INT4、512-token 上下文、32-token 输出、800 ms 推理预算；总控制时限 1 s。</p>
         <p class="capacity-note" data-warning="true">TOPS 与带宽是带效率和余量的初步筛选值；最终选型必须用同一量化文件、推理后端和目标芯片复测 P95/P99 与功耗。<br /><span lang="en">These are screening estimates; final sizing requires the exact quantization, backend, and target silicon.</span></p>
       </section>
     </div>
@@ -316,7 +323,7 @@ export function renderLiveUi(): string {
     <section class="call-panel" aria-labelledby="piTraceTitle">
       <div class="resource-head"><h2 id="piTraceTitle">基站 Pi Agent 完整轨迹 / Full execution trace</h2><span>高级信息 / advanced</span></div>
       <p class="capacity-note">展示模型输入摘要、工具 Schema、实际 tool call 参数、Proposal、Guardrail 和 Function ACK；不展示隐藏思维链。<br /><span lang="en">Shows the model request summary, tool schemas, actual tool-call arguments, proposal, guardrail, and Function ACK—never hidden reasoning.</span></p>
-      <div class="call-trace" id="piTrace"><div class="intent-placeholder">运行任务后显示真实框架调用轨迹；只有 Remote API 模式包含真实模型推理。<br /><span lang="en">Run a task to inspect the framework trace; only Remote API mode performs real model inference.</span></div></div>
+      <div class="call-trace" id="piTrace"><div class="intent-placeholder">运行任务后显示真实框架调用轨迹；Pi API 模式会调用本机 Ollama 或配置的远程模型。<br /><span lang="en">Run a task to inspect the real framework trace; Pi API calls local Ollama or the configured remote model.</span></div></div>
     </section>
 
     <div class="grid">
@@ -370,6 +377,12 @@ export function renderLiveUi(): string {
     const resourceHeap = $('resourceHeap');
     const resourceTokens = $('resourceTokens');
     const resourceModelTime = $('resourceModelTime');
+    const resourceGpu = $('resourceGpu');
+    const resourceModelMemory = $('resourceModelMemory');
+    const resourceOutputRate = $('resourceOutputRate');
+    const resourceEffectiveTops = $('resourceEffectiveTops');
+    const resourceEffectiveBandwidth = $('resourceEffectiveBandwidth');
+    const resourceQuantization = $('resourceQuantization');
     const resourceScope = $('resourceScope');
     const resourceCaveat = $('resourceCaveat');
     const cpuBar = $('cpuBar');
@@ -397,14 +410,15 @@ export function renderLiveUi(): string {
         save: $('saveStationApiConfig'),
         state: $('stationApiConfigState'),
         message: $('stationApiConfigMessage'),
-        defaultModelId: 'Qwen/Qwen3-0.6B'
+        defaultModelId: 'qwen3:0.6b'
       }
     };
     let piTraceSequence = 0;
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
+    let liveLocalPeak = { gpu: 0, modelMemory: 0 };
     const modelConfigs = {
       intent: { configured: false, modelId: 'Qwen/Qwen3-8B', apiKeyConfigured: false },
-      station: { configured: false, modelId: 'Qwen/Qwen3-0.6B', apiKeyConfigured: false }
+      station: { configured: true, baseUrl: 'http://127.0.0.1:11434/v1', modelId: 'qwen3:0.6b', apiKeyConfigured: false }
     };
     let running = false;
 
@@ -444,6 +458,7 @@ export function renderLiveUi(): string {
       if (message.kind === 'intent_parse_stage') renderIntentStage(message);
       if (message.kind === 'intent_ir_ready') renderIntentIr(message);
       if (message.kind === 'resource_sample') renderResourceSample(message.sample);
+      if (message.kind === 'local_resource_sample') renderLocalResourceSample(message.sample);
       if (message.kind === 'resource_summary') renderResourceSummary(message.summary);
       if (message.kind === 'run_started') resetRun(message);
       if (message.kind === 'event') renderEvent(message);
@@ -503,6 +518,15 @@ export function renderLiveUi(): string {
       }
     }
 
+    function isLocalConfig(config) {
+      try {
+        const hostname = new URL(config.baseUrl).hostname;
+        return hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '127.0.0.1' || hostname === '[::1]';
+      } catch {
+        return false;
+      }
+    }
+
     function renderModelConfig(role, config) {
       modelConfigs[role] = config;
       const ui = configUi[role];
@@ -511,7 +535,9 @@ export function renderLiveUi(): string {
       ui.apiKey.value = '';
       ui.apiKey.placeholder = config.apiKeyConfigured
         ? '已配置；留空保持 / configured; blank keeps it'
-        : '可选；仅当前进程内存 / optional; memory only';
+        : role === 'station' && isLocalConfig(config)
+          ? 'Ollama 本机无需填写 / not required locally'
+          : '可选；仅当前进程内存 / optional; memory only';
       ui.state.dataset.configured = String(Boolean(config.configured));
       ui.state.textContent = config.configured
         ? '已配置 / Configured · ' + config.modelId
@@ -524,8 +550,8 @@ export function renderLiveUi(): string {
       } else {
         if (config.configured) modeSelect.value = 'pi-api';
         $('stationApiModeOption').textContent = config.configured
-          ? '真实小模型 · ' + config.modelId
-          : '远端小模型 API（未配置）';
+          ? (isLocalConfig(config) ? '本机真实模型 · ' : '远端真实模型 · ') + config.modelId
+          : '基站小模型未配置';
       }
       renderSelectedModelLanes();
     }
@@ -535,14 +561,16 @@ export function renderLiveUi(): string {
         ? (modelConfigs.intent.configured ? '当前：真实 API · ' + modelConfigs.intent.modelId : '当前：远端大模型未配置') + '\\nNatural language → Intent IR'
         : '当前：合成解析器，无模型推理\\nNatural language → Intent IR';
       $('stationLaneModel').textContent = modeSelect.value === 'pi-api'
-        ? (modelConfigs.station.configured ? '当前：真实 API · ' + modelConfigs.station.modelId : '当前：远端小模型未配置') + '\\nIntent IR → Tool Call'
+        ? (modelConfigs.station.configured
+          ? (isLocalConfig(modelConfigs.station) ? '当前：本机真实模型 · ' : '当前：远端真实 API · ') + modelConfigs.station.modelId
+          : '当前：基站小模型未配置') + '\\nIntent IR → Tool Call'
         : modeSelect.value === 'pi-faux'
           ? '当前：faux 响应，无模型推理\\nIntent IR → Tool Call'
           : '当前：规则基线，无模型推理\\nIntent IR → Action';
       const intentReal = intentModeSelect.value === 'intent-api' && modelConfigs.intent.configured;
       const stationReal = modeSelect.value === 'pi-api' && modelConfigs.station.configured;
       if (intentReal && stationReal) {
-        runModeSummary.textContent = '真实双模型：大模型翻译 Intent，小模型通过 Pi Agent 调用模拟工具。';
+        runModeSummary.textContent = '真实双模型：大模型翻译 Intent，本机小模型通过 Pi Agent 调用模拟工具。';
         runButton.textContent = '运行真实双模型测试 / Run two-model test';
       } else if (intentReal || stationReal) {
         runModeSummary.textContent = '当前是混合模式；另一侧仍使用无模型演示。';
@@ -565,7 +593,7 @@ export function renderLiveUi(): string {
       if (modeSelect.value === 'pi-api' && !modelConfigs.station.configured) {
         setStatus('rejected', '请先配置基站小模型 / Configure the station model');
         configUi.station.message.dataset.state = 'error';
-        configUi.station.message.textContent = '基站 Remote API 模式需要独立的 Base URL。 / Station Remote API requires its own Base URL.';
+        configUi.station.message.textContent = '基站本地模型需要有效的 localhost Base URL。 / Local station model requires a localhost endpoint.';
         configUi.station.baseUrl.focus();
         return;
       }
@@ -697,28 +725,41 @@ export function renderLiveUi(): string {
       const stationSource = message.stationResponseSource || message.modelResponseSource || 'no_model';
       const stationModelId = message.stationModelId || message.modelId;
       piTraceBadge.dataset.source = stationSource;
-      piTraceBadge.textContent = stationSource === 'remote_api'
-        ? '真实基站小模型 / Real station model · ' + stationModelId
+      piTraceBadge.textContent = stationSource === 'local_model'
+        ? '本机真实小模型 / Local station model · ' + stationModelId
+        : stationSource === 'remote_api'
+          ? '远端真实小模型 / Remote station model · ' + stationModelId
         : stationSource === 'preset_fixture'
           ? '预置响应 / FAUX fixture · no model'
           : '规则路径 / Rules · no model';
       $('intentLaneModel').textContent = message.intentResponseSource === 'remote_api'
         ? '本次：真实 API · ' + message.intentModelId + '\\nNatural language → Intent IR'
         : '本次：合成解析器，无模型推理\\nNatural language → Intent IR';
-      $('stationLaneModel').textContent = stationSource === 'remote_api'
-        ? '本次：真实 API · ' + stationModelId + '\\nIntent IR → Tool Call'
+      $('stationLaneModel').textContent = stationSource === 'local_model'
+        ? '本次：本机真实模型 · ' + stationModelId + '\\nIntent IR → Tool Call'
+        : stationSource === 'remote_api'
+          ? '本次：远端真实 API · ' + stationModelId + '\\nIntent IR → Tool Call'
         : stationSource === 'preset_fixture'
           ? '本次：faux 响应，无模型推理\\nIntent IR → Tool Call'
           : '本次：规则基线，无模型推理\\nIntent IR → Action';
       liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
+      liveLocalPeak = { gpu: 0, modelMemory: 0 };
       resourcePhase.textContent = '启动 / starting';
       resourceCpu.textContent = '0%';
       resourceRss.textContent = '0 MiB';
       resourceHeap.textContent = '0 MiB';
       resourceTokens.textContent = '等待 / waiting';
       resourceModelTime.textContent = '—';
-      resourceScope.textContent = message.mode === 'pi-api'
-        ? 'Agent 实测；模型服务端不可见 / server hidden'
+      resourceGpu.textContent = '—';
+      resourceModelMemory.textContent = '—';
+      resourceOutputRate.textContent = '—';
+      resourceEffectiveTops.textContent = '—';
+      resourceEffectiveBandwidth.textContent = '—';
+      resourceQuantization.textContent = '—';
+      resourceScope.textContent = stationSource === 'local_model'
+        ? 'Agent + 本机模型实测 / local measured'
+        : message.mode === 'pi-api'
+          ? 'Agent 实测；远端模型不可见 / remote hidden'
         : 'Agent 客户端进程 / client process';
       cpuBar.style.width = '0%';
       rssBar.style.width = '0%';
@@ -743,6 +784,15 @@ export function renderLiveUi(): string {
       rssBarLabel.textContent = formatNumber(liveResourcePeak.rss) + ' MiB';
     }
 
+    function renderLocalResourceSample(sample) {
+      if (!sample) return;
+      liveLocalPeak.gpu = Math.max(liveLocalPeak.gpu, Number(sample.gpuUtilizationPercent) || 0);
+      liveLocalPeak.modelMemory = Math.max(liveLocalPeak.modelMemory, Number(sample.modelGpuResidentMiB ?? sample.modelResidentMiB) || 0);
+      resourceGpu.textContent = formatNumber(liveLocalPeak.gpu) + '%';
+      resourceModelMemory.textContent = formatNumber(liveLocalPeak.modelMemory) + ' MiB';
+      if (sample.quantization) resourceQuantization.textContent = sample.quantization;
+    }
+
     function renderResourceSummary(summary) {
       if (!summary) return;
       resourcePhase.textContent = '完成 / complete';
@@ -752,9 +802,24 @@ export function renderLiveUi(): string {
       const usage = summary.tokenUsage;
       resourceTokens.textContent = usage ? usage.input + ' / ' + usage.output : 'N/A';
       resourceModelTime.textContent = usage?.modelDurationMs === undefined ? 'N/A' : formatMs(usage.modelDurationMs);
-      resourceScope.textContent = summary.modelServerMetrics === 'not_visible_from_api_client'
-        ? '仅 Agent 实测 / Agent only · API server N/A'
-        : '无真实模型 / No real model';
+      const local = summary.localModel;
+      if (local) {
+        resourceGpu.textContent = local.peakGpuUtilizationPercent === undefined ? 'N/A' : formatNumber(local.peakGpuUtilizationPercent) + '%';
+        resourceModelMemory.textContent = local.modelGpuResidentMiB === undefined && local.modelResidentMiB === undefined
+          ? 'N/A'
+          : formatNumber(local.modelGpuResidentMiB ?? local.modelResidentMiB) + ' MiB';
+        resourceOutputRate.textContent = local.observedOutputTokensPerSecond === undefined ? 'N/A' : formatNumber(local.observedOutputTokensPerSecond) + ' tok/s';
+        resourceEffectiveTops.textContent = local.effectiveComputeTops === undefined ? 'N/A' : formatNumber(local.effectiveComputeTops) + ' TOPS';
+        resourceEffectiveBandwidth.textContent = local.effectiveWeightBandwidthGBps === undefined ? 'N/A' : formatNumber(local.effectiveWeightBandwidthGBps) + ' GB/s';
+        resourceQuantization.textContent = local.quantization || 'N/A';
+      }
+      resourceScope.textContent = summary.modelServerMetrics === 'local_observed'
+        ? 'Agent + Ollama + Mac GPU 实测'
+        : summary.modelServerMetrics === 'not_visible_from_api_client'
+          ? '仅 Agent 实测 / Agent only · remote server N/A'
+          : summary.modelServerMetrics === 'local_unavailable'
+            ? '本机模型遥测不可用 / local telemetry unavailable'
+            : '无真实模型 / No real model';
       resourceCaveat.textContent = (summary.caveats || []).join(' ');
       renderCapacity(summary.capacityEstimate);
     }

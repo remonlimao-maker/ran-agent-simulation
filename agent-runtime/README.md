@@ -24,18 +24,27 @@ npm ci
 npm test
 npm run demo
 npm run demo:pi
+npm run demo:local
 npm run bench:pi
 npm run live
 npm run experiment -- --mode pi-faux --runs 3
 ```
 
-`demo` runs the rules-only baseline. `demo:pi` runs the real Pi Agent event and tool loop against Pi's deterministic faux provider, so it needs no model server. Both write newline-delimited events followed by a summary. A UI can subscribe through `StationAgentRuntime.subscribe()` and the Pi runner's `onEvent` callback.
+`demo` runs the rules-only baseline. `demo:pi` runs the real Pi Agent event and tool loop against Pi's deterministic faux provider, so it needs no model server. `demo:local` calls the local OpenAI-compatible Ollama endpoint and performs real model inference. All three write newline-delimited events followed by a summary.
 
 `npm run live` starts a light, bilingual, loopback-only console at `http://127.0.0.1:4175`. Enter a Chinese or English task to see the parsing trace, Intent IR, Pi lifecycle, Function ACK, client CPU/RSS/heap, token usage, and a separate chip-capacity estimate. Its demo pace can be real-time, fast, standard, or slow; presentation delays are excluded from the station-control SLA. The console never connects to a live RAN or exposes hidden chain-of-thought.
 
-The visible **Two-model agent path** has two independent API cards. The management-side large model performs natural language → structured Intent semantics; the station-side small model performs Intent IR → Pi tool call. Each card has its own OpenAI-compatible Base URL, model ID, and optional key. Keys are sent only to the loopback server, kept in current-process memory, never returned by an API response, and cleared from the inputs after applying. They are not written to files, logs, browser storage, or Git.
+The visible **Two-model agent path** has two independent model cards. The management-side large model performs natural language → structured Intent semantics; the station-side small model performs Intent IR → Pi tool call. The station card defaults to local Ollama at `http://127.0.0.1:11434/v1` with `qwen3:0.6b` and needs no key. A remote management or station provider may use its own key; keys remain only in current-process memory and are never returned, logged, stored in the browser, or committed to Git.
 
-Both model bridges accept local or remote OpenAI-compatible endpoints. The two roles may use different providers:
+Both model bridges accept local or remote OpenAI-compatible endpoints. A local-first launch needs only:
+
+```bash
+brew services start ollama
+ollama pull qwen3:0.6b
+npm run live
+```
+
+The two roles may also use different remote providers:
 
 ```bash
 RAN_INTENT_MODEL_BASE_URL=https://management-model.example/v1 \
@@ -47,11 +56,11 @@ RAN_STATION_MODEL_API_KEY=station_key \
 npm run live
 ```
 
-Select `Remote LLM` for the management Intent Agent and `Pi Agent · Remote small model` for the station Agent. The management adapter forces exactly one `emit_intent_semantics` tool call, then injects timestamps and safety policy deterministically and validates the resulting Intent IR. The station adapter continues to use Pi Agent Core. Confirm that each provider currently lists its configured model; provider availability is external state. Legacy `RAN_MODEL_*` variables still map to the station model.
+Select `Remote LLM` for the management Intent Agent and `Pi Agent · Local/remote small model` for the station Agent. The management adapter forces exactly one `emit_intent_semantics` tool call, then injects timestamps and safety policy deterministically and validates the resulting Intent IR. The station adapter continues to use Pi Agent Core. Legacy `RAN_MODEL_*` variables still map to the station model.
 
-The reference model is `Qwen/Qwen3-0.6B`. Its official name counts roughly 0.6B parameters while the published repository metadata is about 0.8B total weights, making it the closest official Qwen profile to this project's “about 0.8B” target. The Pi profile uses a 4K context declaration, at most 32 output tokens, text only, and reasoning off.
+The local reference model is `qwen3:0.6b`. Ollama reports `751.63M` parameters, `Q4_K_M`, a 4K active context, and about `572 MiB` resident model memory. The station request is text-only, reasoning-off, temperature zero, and capped at 64 output tokens; the chip-planning profile remains the stricter 512-token input / 32-token output workload.
 
-The resource panel separates evidence: rules/faux report only the Node Agent process; remote API mode adds provider-reported tokens and end-to-end timing but cannot see server TOPS, RAM/VRAM, bandwidth, or power. Capacity values are explicitly labeled analytical estimates until repeated on controlled hardware.
+The resource panel separates evidence: rules/faux report only the Node Agent process; remote API mode adds provider-reported tokens and end-to-end timing; local Ollama mode also samples model residency and macOS system GPU/unified-memory counters. Workload-equivalent TOPS and bandwidth are derived from measured throughput and are explicitly not presented as direct chip counters. Power still requires a privileged or external meter.
 
 The Pi execution trace exposes only operational evidence: the bounded model-request summary, tool schemas, provider-reported usage, actual tool-call name/arguments, proposal-only callback, deterministic guardrail result, Function dispatch, and ACK. It never persists assistant prose or hidden reasoning. `pi-faux` is marked as a preset fixture; only `pi-api` is marked as real model inference.
 
@@ -80,11 +89,12 @@ npm run experiment -- \
   --runs 30 \
   --starts warm \
   --precisions INT4 \
-  --base-url http://127.0.0.1:8000/v1 \
-  --model-id Qwen/Qwen3-0.6B
+  --base-url http://127.0.0.1:11434/v1 \
+  --model-id qwen3:0.6b \
+  --max-inference-ms 800
 ```
 
-Each condition reports safe completion, timeout/rejection rates, deadline-met rate, P50/P95/max ACTION_ACK latency, and peak client RSS. In `pi-faux` mode, the Pi event/tool loop is real but the configured model latency is only an injected delay. In `pi-local` mode, client RSS excludes the external model process, VRAM, and power, while precision and warm/cold are labels that the harness cannot independently verify.
+Each condition reports tool exact match, parameter exact match, task correctness, safe completion, timeout/rejection rates, deadline-met rate, P50/P95/max ACTION_ACK latency, and peak client RSS. A successful ACK alone is not counted as a correct task. In `pi-faux` mode, the Pi event/tool loop is real but the configured model latency is only an injected delay. In `pi-local` CLI mode, client RSS still excludes Ollama; use the live console for local model/GPU residency telemetry. Precision and warm/cold remain experiment labels unless the operator explicitly manages Ollama lifecycle between conditions.
 
 ## Safety properties in this prototype
 
@@ -149,6 +159,7 @@ In `pi-faux` mode, Pi Agent Core and the safety path are real, but model latency
 - `src/pi-runner.ts`: current Pi Agent Core one-shot implementation.
 - `src/pi-local.ts`: OpenAI-compatible local or remote model provider wiring.
 - `src/resource-monitor.ts`: live Agent-process sampling and explicit chip-capacity estimator.
+- `src/local-model-telemetry.ts`: local Ollama residency plus macOS GPU/unified-memory sampling and throughput-derived workload equivalents.
 - `src/pi-adapter.ts`: narrow Pi-to-policy proposal boundary.
 - `src/experiment-harness.ts`: repeatable SLA/precision/start-state matrix and report generation.
 - `src/live-server.ts`: loopback-only SSE simulation console and intent parsing stream.

@@ -28,10 +28,10 @@ const config: ExperimentConfig = {
   },
   coldStartPenaltyMs: numberArg(args, "cold-penalty-ms", 500),
   ackDelayMs: numberArg(args, "ack-delay-ms", 30),
-  maxInferenceMs: numberArg(args, "max-inference-ms", 450),
+  maxInferenceMs: numberArg(args, "max-inference-ms", 800),
   outputDir: resolve(stringArg(args, "out-dir", "results")),
-  modelId: stringArg(args, "model-id", process.env.RAN_MODEL_ID ?? "Qwen/Qwen3-0.6B"),
-  baseUrl: stringArg(args, "base-url", process.env.RAN_MODEL_BASE_URL ?? "http://127.0.0.1:8000/v1"),
+  modelId: stringArg(args, "model-id", process.env.RAN_MODEL_ID ?? "qwen3:0.6b"),
+  baseUrl: stringArg(args, "base-url", process.env.RAN_MODEL_BASE_URL ?? "http://127.0.0.1:11434/v1"),
   apiKey: stringArg(args, "api-key", process.env.RAN_MODEL_API_KEY),
 };
 
@@ -119,7 +119,7 @@ function helpText(): string {
     `  --int4-ms N / --int8-ms N         Per-precision synthetic faux delay\n` +
     `  --cold-penalty-ms N               Extra synthetic cold delay (default 500)\n` +
     `  --ack-delay-ms N                  Deterministic DU ACK delay (default 30)\n` +
-    `  --max-inference-ms N              Inference budget cap (default 450)\n` +
+    `  --max-inference-ms N              Inference budget cap (default 800)\n` +
     `  --out-dir PATH                    JSON/CSV output directory\n` +
     `  --base-url URL --model-id ID      pi-local endpoint/model\n`;
 }

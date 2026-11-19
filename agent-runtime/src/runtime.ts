@@ -96,7 +96,7 @@ export class StationAgentRuntime {
       if (performance.now() >= deadlineAtMs) throw new DeadlineError("control", "control deadline expired after inference");
       journal.append("MODEL_COMPLETED", "cu-agent", { proposal });
 
-      const action = validateAction(intent, proposal);
+      const action = validateAction(intent, proposal, snapshots);
       journal.append("PLAN_VALIDATED", "guardrail", {
         actionName: action.actionName,
         target: action.target,

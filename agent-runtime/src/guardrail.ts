@@ -123,7 +123,11 @@ export function validateSnapshotConstraints(intent: StationIntent, snapshots: Ce
   }
 }
 
-export function validateAction(intent: StationIntent, proposalInput: unknown): ActionProposal {
+export function validateAction(
+  intent: StationIntent,
+  proposalInput: unknown,
+  snapshots: CellSnapshot[] = [],
+): ActionProposal {
   const proposal = requireObject(proposalInput, "proposal");
   requireExactKeys(
     proposal,
@@ -163,7 +167,42 @@ export function validateAction(intent: StationIntent, proposalInput: unknown): A
     requireEnum(parameters.profile, ["balanced", "latency", "throughput"], "proposal.parameters.profile");
   }
 
-  return structuredClone(proposal) as unknown as ActionProposal;
+  const validated = structuredClone(proposal) as unknown as ActionProposal;
+  validateActionEffect(intent, validated, snapshots);
+  return validated;
+}
+
+function validateActionEffect(intent: StationIntent, action: ActionProposal, snapshots: CellSnapshot[]): void {
+  const snapshot = snapshots.find((candidate) =>
+    candidate.gnbId === action.target.gnbId && candidate.cellId === action.target.cellId
+  );
+  if (!snapshot) return;
+
+  if (action.actionName === "set_energy_saving_mode") {
+    const mode = action.parameters.mode as CellSnapshot["energySavingMode"];
+    if (mode === snapshot.energySavingMode) {
+      throw new GuardrailError("NO_EFFECT_ACTION", `energy-saving mode is already ${mode}`);
+    }
+    if (intent.objective.metric === "energy_consumption") {
+      const expectedMode = intent.objective.direction === "decrease"
+        ? "LOW_POWER"
+        : intent.objective.direction === "increase"
+          ? "ACTIVE"
+          : undefined;
+      if (expectedMode && mode !== expectedMode) {
+        throw new GuardrailError(
+          "OBJECTIVE_MISMATCH",
+          `${mode} does not move energy_consumption toward ${intent.objective.direction}`,
+        );
+      }
+    }
+  } else if (action.actionName === "set_tx_power_offset") {
+    if (action.parameters.offsetDb === snapshot.txPowerOffsetDb) {
+      throw new GuardrailError("NO_EFFECT_ACTION", `tx-power offset is already ${snapshot.txPowerOffsetDb} dB`);
+    }
+  } else if (action.parameters.profile === snapshot.schedulerProfile) {
+    throw new GuardrailError("NO_EFFECT_ACTION", `scheduler profile is already ${snapshot.schedulerProfile}`);
+  }
 }
 
 function requireObject(value: unknown, path: string): Record<string, unknown> {

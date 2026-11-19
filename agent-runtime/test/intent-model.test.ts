@@ -59,7 +59,7 @@ test("uses a remote management model tool call to build a validated Intent IR", 
   assert.equal(result.parser.modelId, "Qwen/Qwen3-8B");
   assert.deepEqual(result.parser.usage, { inputTokens: 190, outputTokens: 74, totalTokens: 264 });
   assert.deepEqual(result.intent.target, { gnbId: "gnb-001", cellIds: ["cell-01"] });
-  assert.equal(result.intent.execution.maxInferenceMs, 450);
+  assert.equal(result.intent.execution.maxInferenceMs, 800);
   assert.deepEqual(observed, [
     "NATURAL_LANGUAGE_RECEIVED",
     "INTENT_MODEL_REQUEST_BUILT",

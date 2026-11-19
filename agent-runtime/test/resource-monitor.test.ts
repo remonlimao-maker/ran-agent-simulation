@@ -17,11 +17,11 @@ test("estimates an explicit and inspectable 0.8B INT4 planning envelope", () => 
 
   assert.equal(estimate.rawWeightGB, 0.4);
   assert.equal(estimate.kvCacheMiB, 56);
-  assert.equal(estimate.targetDecodeTokensPerSecond, 71.11);
-  assert.equal(estimate.computeLowerBoundTops, 0.11);
-  assert.equal(estimate.weightBandwidthLowerBoundGBps, 28.44);
-  assert.equal(estimate.provisionalChipTops, 1);
-  assert.equal(estimate.provisionalMemoryBandwidthGBps, 66);
+  assert.equal(estimate.targetDecodeTokensPerSecond, 94.81);
+  assert.equal(estimate.computeLowerBoundTops, 0.15);
+  assert.equal(estimate.weightBandwidthLowerBoundGBps, 37.93);
+  assert.equal(estimate.provisionalChipTops, 1.3);
+  assert.equal(estimate.provisionalMemoryBandwidthGBps, 88);
   assert.equal(estimate.provisionalDedicatedRamGiB, 2);
   assert.equal(estimate.provisionalStorageGiB, 2);
 });

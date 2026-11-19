@@ -22,6 +22,8 @@ export interface PiAuditEvent {
   totalTokens?: number;
   modelDurationMs?: number;
   messageRole?: string;
+  stopReason?: string;
+  errorMessage?: string;
   toolArguments?: Record<string, unknown>;
 }
 
@@ -29,6 +31,8 @@ export interface PiAgentOneShotRunnerOptions {
   model: Model<any>;
   streamFn: StreamFn;
   onEvent?: (event: PiAuditEvent) => void | Promise<void>;
+  onPayload?: (payload: unknown) => unknown | undefined | Promise<unknown | undefined>;
+  onProviderStreamEvent?: (data: unknown) => void | Promise<void>;
 }
 
 /**
@@ -41,11 +45,15 @@ export class PiAgentOneShotRunner implements PiOneShotRunner {
   readonly #model: Model<any>;
   readonly #streamFn: StreamFn;
   readonly #onEvent?: (event: PiAuditEvent) => void | Promise<void>;
+  readonly #onPayload?: PiAgentOneShotRunnerOptions["onPayload"];
+  readonly #onProviderStreamEvent?: PiAgentOneShotRunnerOptions["onProviderStreamEvent"];
 
   constructor(options: PiAgentOneShotRunnerOptions) {
     this.#model = options.model;
     this.#streamFn = options.streamFn;
     this.#onEvent = options.onEvent;
+    this.#onPayload = options.onPayload;
+    this.#onProviderStreamEvent = options.onProviderStreamEvent;
   }
 
   async runOneShot(request: Parameters<PiOneShotRunner["runOneShot"]>[0]) {
@@ -66,6 +74,8 @@ export class PiAgentOneShotRunner implements PiOneShotRunner {
         tools,
       },
       streamFn: this.#streamFn,
+      onPayload: this.#onPayload,
+      onProviderStreamEvent: this.#onProviderStreamEvent,
       toolExecution: "sequential",
       beforeToolCall: async ({ toolCall, args }, signal) => {
         if (request.signal.aborted || signal?.aborted) {
@@ -192,6 +202,8 @@ function toAuditEvent(event: AgentEvent, startedAtMs: number): PiAuditEvent {
     audit.cacheWriteTokens = event.message.usage.cacheWrite;
     audit.totalTokens = event.message.usage.totalTokens;
     audit.modelDurationMs = event.message.durationMs;
+    audit.stopReason = event.message.stopReason;
+    if (event.message.errorMessage) audit.errorMessage = event.message.errorMessage;
   }
   if (event.type === "tool_execution_end") {
     audit.durationMs = event.durationMs;

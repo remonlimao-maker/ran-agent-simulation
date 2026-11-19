@@ -29,7 +29,7 @@ test("turns a Chinese operator request into a validated Intent IR with an audita
     { metric: "dl_throughput_p95_mbps", op: ">=", value: 50 },
   ]);
   assert.equal(result.intent.execution.controlDeadlineMs, 1_000);
-  assert.equal(result.intent.execution.maxInferenceMs, 450);
+  assert.equal(result.intent.execution.maxInferenceMs, 800);
   assert.deepEqual(observed, [
     "NATURAL_LANGUAGE_RECEIVED",
     "TARGET_EXTRACTED",

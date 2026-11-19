@@ -204,7 +204,7 @@ export async function parseNaturalLanguageIntentWithModel(
     execution: {
       controlDeadlineMs: controlDeadlineMs as number,
       maxInferenceMs: Math.min(
-        options.scenario === "model_timeout" ? 120 : 450,
+        options.scenario === "model_timeout" ? 120 : 800,
         Math.max(1, (controlDeadlineMs as number) - 50),
       ),
       maxCells: Array.isArray((semantics.target as { cellIds?: unknown }).cellIds)

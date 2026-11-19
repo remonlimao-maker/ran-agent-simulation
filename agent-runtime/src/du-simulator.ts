@@ -6,7 +6,7 @@ import type { ActionProposal, CellSnapshot, ToolDescriptor } from "./types.ts";
 export const STATION_TOOLS: ToolDescriptor[] = [
   {
     name: "set_energy_saving_mode",
-    description: "Set a cell to ACTIVE or LOW_POWER. Full shutdown is intentionally unavailable.",
+    description: "Set a cell to ACTIVE or LOW_POWER. For energy_consumption + decrease, mode MUST be LOW_POWER. Never select the current mode. Full shutdown is unavailable.",
     parameterShape: { mode: ["ACTIVE", "LOW_POWER"] },
   },
   {
