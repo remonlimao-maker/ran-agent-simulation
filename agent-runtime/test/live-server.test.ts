@@ -26,6 +26,15 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /① 大模型输出：Intent JSON/);
   assert.match(page, /② 小模型输出：Tool Call/);
   assert.match(page, /③ 模拟工具执行结果/);
+  assert.match(page, /本次运行怎么看 \/ Live execution observability/);
+  assert.match(page, /id="journeyManagement"/);
+  assert.match(page, /id="journeyModel"/);
+  assert.match(page, /id="journeyFunction"/);
+  assert.match(page, /id="cpuChartLine"/);
+  assert.match(page, /id="gpuChartLine"/);
+  assert.match(page, /实测 \/ Measured/);
+  assert.match(page, /推导 \/ Derived/);
+  assert.match(page, /设计估算 \/ Sizing/);
   assert.match(page, /id="toolCallJson"/);
   assert.match(page, /id="toolResultJson"/);
   assert.match(page, /naturalLanguage/);
@@ -51,6 +60,8 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /NOT_INVOKED/);
   assert.match(page, /NO_TOOL_CALL/);
+  assert.match(page, /currentControlDeadlineMs/);
+  assert.doesNotMatch(page, /Math\.min\(1000, ms\)/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
   assert.doesNotMatch(page, /(?:src|href)=["']https?:\/\//, "the live UI must not depend on remote assets");

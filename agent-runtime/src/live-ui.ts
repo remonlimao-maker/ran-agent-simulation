@@ -86,6 +86,57 @@ export function renderLiveUi(): string {
     .result-head h2 { margin: 0; font-size: 15px; }
     .result-state { color: var(--muted); font-size: 10px; text-align: right; overflow-wrap: anywhere; }
     .result-output { min-height: 250px; max-height: 410px; overflow: auto; margin: 0; border: 1px solid #dce8ea; border-radius: 10px; padding: 11px 12px; background: #ffffff; color: #284148; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .observability { margin: 0 0 16px; border: 1px solid #b9dbe0; border-radius: 18px; padding: 18px; background: rgba(255, 255, 255, .96); box-shadow: 0 14px 42px rgba(30, 74, 82, .08); }
+    .observability-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .observability-head h2 { margin: 0; font-size: 18px; }
+    .observability-head p { margin: 0; color: var(--muted); font-size: 13px; }
+    .journey { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; margin-bottom: 14px; }
+    .journey-step { position: relative; min-width: 0; min-height: 92px; border: 1px solid #dce7e9; border-radius: 13px; padding: 12px; background: #f8fbfb; }
+    .journey-step > span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 750; }
+    .journey-step > span::before { content: ''; width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #aebdc1; }
+    .journey-step strong { display: block; margin-top: 9px; font-size: 14px; line-height: 1.3; }
+    .journey-step small { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+    .journey-step[data-state="running"] { border-color: #71c7d3; background: #edf9fb; box-shadow: inset 0 0 20px rgba(5, 141, 163, .07); }
+    .journey-step[data-state="running"] > span::before { background: var(--cyan); animation: pulse 1s infinite; }
+    .journey-step[data-state="done"] { border-color: #9dd9be; background: #f0faf5; }
+    .journey-step[data-state="done"] > span::before { background: var(--green); }
+    .journey-step[data-state="failed"] { border-color: #e2bd86; background: #fff7eb; }
+    .journey-step[data-state="failed"] > span::before { background: var(--amber); }
+    .journey-step[data-state="skipped"] { opacity: .58; }
+    .observation-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 14px; }
+    .live-chart-card, .reading-card { min-width: 0; border: 1px solid #dce7e9; border-radius: 14px; padding: 14px; background: #fbfdfd; }
+    .observation-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .observation-card-head strong { font-size: 15px; }
+    .observation-card-head span { color: var(--muted); font-size: 12px; text-align: right; }
+    .quick-budget { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .quick-budget strong { font-size: 20px; }
+    .quick-budget span { color: var(--muted); font-size: 12px; }
+    .quick-budget-track { height: 8px; overflow: hidden; border-radius: 99px; background: #dfeaec; }
+    .quick-budget-track > span { display: block; width: 0%; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--green)); transition: width .12s linear; }
+    .chart-wrap { position: relative; min-height: 170px; border: 1px solid #e1eaec; border-radius: 11px; overflow: hidden; background: linear-gradient(#ffffff, #f7fbfb); }
+    .utilization-chart { display: block; width: 100%; height: 170px; }
+    .chart-grid-line { stroke: #e2eaec; stroke-width: .6; vector-effect: non-scaling-stroke; }
+    .chart-line { fill: none; stroke-width: 2.4; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-line.cpu { stroke: #1674a8; }
+    .chart-line.gpu { stroke: #7554c9; }
+    .chart-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; color: var(--muted); font-size: 13px; text-align: center; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 9px; color: var(--muted); font-size: 12px; }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .chart-legend i { width: 18px; height: 3px; border-radius: 99px; background: #1674a8; }
+    .chart-legend span:nth-child(2) i { background: #7554c9; }
+    .run-verdict { margin: 0 0 12px; border-left: 4px solid var(--cyan); border-radius: 0 10px 10px 0; padding: 11px 12px; background: #eef8fa; color: #294950; font-size: 14px; line-height: 1.5; }
+    .run-verdict[data-state="succeeded"] { border-left-color: var(--green); background: #edf9f3; }
+    .run-verdict[data-state="failed"] { border-left-color: var(--amber); background: #fff7eb; }
+    .quick-group { margin-top: 12px; }
+    .quick-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 800; }
+    .provenance { display: inline-flex; border-radius: 999px; padding: 3px 7px; font-size: 11px; }
+    .provenance.measured { color: #126a4c; background: #e7f7ef; }
+    .provenance.derived { color: #6845ad; background: #f0eafb; }
+    .provenance.estimated { color: #8a5a10; background: #fff2dc; }
+    .quick-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .quick-metric { min-width: 0; border: 1px solid #e1e9eb; border-radius: 10px; padding: 9px; background: #ffffff; }
+    .quick-metric span { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+    .quick-metric strong { display: block; margin-top: 5px; font-size: 15px; overflow-wrap: anywhere; }
     details.advanced-settings, details.advanced-lab { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .78); }
     details.advanced-settings > summary, details.advanced-lab > summary { padding: 12px 14px; color: var(--muted); font-size: 12px; font-weight: 750; cursor: pointer; }
     .advanced-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0 14px 14px; }
@@ -176,6 +227,11 @@ export function renderLiveUi(): string {
       .flow-arrow { transform: rotate(90deg); text-align: center; }
       .model-configs { grid-template-columns: 1fr; }
       .core-results { grid-template-columns: 1fr; }
+      .observability-head { display: block; }
+      .observability-head p { margin-top: 6px; }
+      .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .observation-grid { grid-template-columns: 1fr; }
+      .quick-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .advanced-options { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
       .resource-grid { grid-template-columns: 1fr; }
@@ -257,6 +313,79 @@ export function renderLiveUi(): string {
       </article>
     </section>
 
+    <section class="observability" aria-labelledby="observabilityTitle">
+      <div class="observability-head">
+        <h2 id="observabilityTitle">本次运行怎么看 / Live execution observability</h2>
+        <p>先看调用链是否走通，再看实测资源，最后看芯片设计量。</p>
+      </div>
+
+      <div class="journey" aria-label="Model and tool call chain">
+        <div class="journey-step" id="journeyManagement" data-state="waiting"><span>等待 / Waiting</span><strong>网管大模型</strong><small>自然语言 → 结构化语义</small></div>
+        <div class="journey-step" id="journeyIntent" data-state="waiting"><span>等待 / Waiting</span><strong>Intent IR</strong><small>Schema、时限与动作白名单</small></div>
+        <div class="journey-step" id="journeyGuardrail" data-state="waiting"><span>等待 / Waiting</span><strong>基站安全检查</strong><small>遥测、目标与约束校验</small></div>
+        <div class="journey-step" id="journeyModel" data-state="waiting"><span>等待 / Waiting</span><strong>Pi Agent + 小模型</strong><small>Intent IR → Action Proposal</small></div>
+        <div class="journey-step" id="journeyTool" data-state="waiting"><span>等待 / Waiting</span><strong>Tool Call</strong><small>工具名与参数必须真实产生</small></div>
+        <div class="journey-step" id="journeyFunction" data-state="waiting"><span>等待 / Waiting</span><strong>Function + ACK</strong><small>模拟基站函数实际执行确认</small></div>
+      </div>
+
+      <div class="observation-grid">
+        <article class="live-chart-card">
+          <div class="observation-card-head"><strong>推理过程 / Utilization over time</strong><span id="quickPhase">等待任务 / Waiting</span></div>
+          <div class="quick-budget">
+            <strong id="quickElapsed">0 ms</strong>
+            <div class="quick-budget-track" aria-hidden="true"><span id="quickBudgetFill"></span></div>
+            <span id="quickSla">/ 1,000 ms SLA</span>
+          </div>
+          <div class="chart-wrap">
+            <svg class="utilization-chart" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Agent CPU and Mac GPU utilization chart">
+              <line class="chart-grid-line" x1="0" y1="25" x2="100" y2="25"></line>
+              <line class="chart-grid-line" x1="0" y1="50" x2="100" y2="50"></line>
+              <line class="chart-grid-line" x1="0" y1="75" x2="100" y2="75"></line>
+              <polyline class="chart-line cpu" id="cpuChartLine" points=""></polyline>
+              <polyline class="chart-line gpu" id="gpuChartLine" points=""></polyline>
+            </svg>
+            <div class="chart-empty" id="chartEmpty">运行后实时绘制 CPU / GPU 采样。<br />曲线是过程，下面的数字是峰值与终值。</div>
+          </div>
+          <div class="chart-legend"><span><i></i>Agent CPU（Node 进程）</span><span><i></i>Mac GPU（系统级采样）</span><span id="chartWindow">时间窗 / Window —</span></div>
+        </article>
+
+        <article class="reading-card">
+          <div class="observation-card-head"><strong>本次结论 / What to read</strong><span>数值来源必须分开看</span></div>
+          <p class="run-verdict" id="runVerdict">运行后这里会直接说明：卡在意图解析、小模型推理、Tool Call，还是 Function ACK。</p>
+
+          <div class="quick-group">
+            <div class="quick-group-head"><span class="provenance measured">实测 / Measured</span>这次机器真实观察到的量</div>
+            <div class="quick-metrics">
+              <div class="quick-metric"><span>模型耗时</span><strong id="quickModelTime">—</strong></div>
+              <div class="quick-metric"><span>Token 输入 / 输出</span><strong id="quickTokens">—</strong></div>
+              <div class="quick-metric"><span>GPU 峰值</span><strong id="quickGpu">—</strong></div>
+              <div class="quick-metric"><span>模型驻留内存</span><strong id="quickModelMemory">—</strong></div>
+            </div>
+          </div>
+
+          <div class="quick-group">
+            <div class="quick-group-head"><span class="provenance derived">推导 / Derived</span>由本次 Token 吞吐换算，不是芯片峰值</div>
+            <div class="quick-metrics">
+              <div class="quick-metric"><span>输出速度</span><strong id="quickOutputRate">—</strong></div>
+              <div class="quick-metric"><span>工作负载等效算力</span><strong id="quickEffectiveTops">—</strong></div>
+              <div class="quick-metric"><span>工作负载等效带宽</span><strong id="quickEffectiveBandwidth">—</strong></div>
+              <div class="quick-metric"><span>量化格式</span><strong id="quickQuantization">—</strong></div>
+            </div>
+          </div>
+
+          <div class="quick-group">
+            <div class="quick-group-head"><span class="provenance estimated">设计估算 / Sizing</span>满足目标 SLA 的初步芯片下限</div>
+            <div class="quick-metrics">
+              <div class="quick-metric"><span>建议 INT4 TOPS</span><strong id="quickCapacityTops">—</strong></div>
+              <div class="quick-metric"><span>建议内存带宽</span><strong id="quickCapacityBandwidth">—</strong></div>
+              <div class="quick-metric"><span>建议模型 RAM</span><strong id="quickCapacityRam">—</strong></div>
+              <div class="quick-metric"><span>建议模型存储</span><strong id="quickCapacityStorage">—</strong></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <details class="advanced-settings">
       <summary>高级测试选项 / Advanced test options</summary>
       <div class="advanced-options">
@@ -276,7 +405,7 @@ export function renderLiveUi(): string {
         </section>
 
     <section class="budget" aria-label="Control deadline">
-      <div class="budget-head"><div><div class="eyebrow">基站控制 / Station control · Intent → Function ACK</div><strong id="elapsed">0 ms</strong></div><strong>1,000 ms SLA</strong></div>
+      <div class="budget-head"><div><div class="eyebrow">基站控制 / Station control · Intent → Function ACK</div><strong id="elapsed">0 ms</strong></div><strong id="slaLabel">1,000 ms SLA</strong></div>
       <div class="budget-track"><div class="budget-fill" id="budgetFill"></div><div class="deadline"></div></div>
       <div class="budget-labels"><span id="phase">等待任务 / Waiting</span><span id="reserve">剩余 / Reserve 1,000 ms</span></div>
     </section>
@@ -364,6 +493,15 @@ export function renderLiveUi(): string {
     const terminal = $('terminal');
     const action = $('action');
     const version = $('version');
+    const quickElapsed = $('quickElapsed');
+    const quickBudgetFill = $('quickBudgetFill');
+    const quickSla = $('quickSla');
+    const quickPhase = $('quickPhase');
+    const runVerdict = $('runVerdict');
+    const cpuChartLine = $('cpuChartLine');
+    const gpuChartLine = $('gpuChartLine');
+    const chartEmpty = $('chartEmpty');
+    const chartWindow = $('chartWindow');
     const naturalLanguage = $('naturalLanguage');
     const parseTrace = $('parseTrace');
     const parseState = $('parseState');
@@ -416,6 +554,8 @@ export function renderLiveUi(): string {
     let piTraceSequence = 0;
     let stationModelStarted = false;
     let stationToolCallReceived = false;
+    let currentControlDeadlineMs = 1_000;
+    let utilizationSeries = { cpu: [], gpu: [] };
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
     let liveLocalPeak = { gpu: 0, modelMemory: 0 };
     const modelConfigs = {
@@ -620,6 +760,7 @@ export function renderLiveUi(): string {
     });
 
     function prepareIntentPanels() {
+      resetObservability();
       parseTrace.replaceChildren();
       const waiting = document.createElement('div');
       waiting.className = 'intent-placeholder';
@@ -642,6 +783,7 @@ export function renderLiveUi(): string {
       parseState.textContent = message.label || '解析中 / Parsing';
       intentJson.textContent = '正在解析自然语言意图… / Parsing operator intent…';
       setStatus('running', '正在解析运营意图 / Parsing intent');
+      setJourneyStage('journeyManagement', 'running', message.parser || '正在调用网管解析器 / Calling management parser');
       setActive('nodeIntent');
     }
 
@@ -670,6 +812,19 @@ export function renderLiveUi(): string {
       parseTrace.append(row);
       parseTrace.scrollTop = parseTrace.scrollHeight;
       parseState.textContent = String(label);
+      if (stageName === 'INTENT_MODEL_REQUEST_BUILT') {
+        setJourneyStage('journeyManagement', 'running', '请求已发出，等待结构化 Tool Call');
+      }
+      if (stageName === 'INTENT_MODEL_TOOL_CALL') {
+        setJourneyStage('journeyManagement', 'done', '已返回结构化语义');
+        setJourneyStage('journeyIntent', 'running', '正在组装并校验 Intent IR');
+      }
+      if (stageName === 'INTENT_IR_GENERATED') {
+        setJourneyStage('journeyIntent', 'running', 'Intent IR 已生成，正在校验');
+      }
+      if (stageName === 'INTENT_IR_VALIDATED') {
+        setJourneyStage('journeyIntent', 'done', 'Schema 与时效校验通过');
+      }
       setActive('nodeIntent');
     }
 
@@ -680,6 +835,8 @@ export function renderLiveUi(): string {
       const traceMs = Number(message.traceElapsedMs);
       const parser = message.parser || {};
       const usage = parser.usage;
+      const deadlineMs = Number(intent?.execution?.controlDeadlineMs);
+      if (Number.isFinite(deadlineMs)) updateControlDeadline(deadlineMs);
       const source = parser.modelId
         ? '真实大模型 / Real LLM · ' + parser.modelId
           + (Number.isFinite(Number(parser.modelDurationMs)) ? ' · model ' + formatMs(Number(parser.modelDurationMs)) : '')
@@ -691,6 +848,10 @@ export function renderLiveUi(): string {
       $('intentLaneModel').textContent = parser.modelId
         ? '本次：真实 API · ' + parser.modelId + '\\nNatural language → Intent IR'
         : '本次：合成解析器，无模型推理\\nNatural language → Intent IR';
+      setJourneyStage('journeyManagement', 'done', parser.modelId
+        ? parser.modelId + ' · ' + formatMs(Number(parser.modelDurationMs) || 0)
+        : '合成解析器 / Synthetic parser');
+      setJourneyStage('journeyIntent', 'done', 'Intent IR v' + (intent.schemaVersion || '0.1') + ' · SLA ' + formatMs(currentControlDeadlineMs));
       setStatus('running', '结构化意图已生成 / Structured intent ready');
       setActive('nodeIntent');
     }
@@ -706,13 +867,82 @@ export function renderLiveUi(): string {
       catch { return String(value); }
     }
 
+    function setJourneyStage(id, state, detail) {
+      const step = $(id);
+      if (!step) return;
+      const labels = {
+        waiting: '等待 / Waiting',
+        running: '进行中 / Running',
+        done: '完成 / Done',
+        failed: '未通过 / Failed',
+        skipped: '未执行 / Skipped'
+      };
+      step.dataset.state = state;
+      const stateNode = step.querySelector('span');
+      const detailNode = step.querySelector('small');
+      if (stateNode) stateNode.textContent = labels[state] || state;
+      if (detailNode && detail) detailNode.textContent = detail;
+    }
+
+    function resetJourney() {
+      setJourneyStage('journeyManagement', 'waiting', '自然语言 → 结构化语义');
+      setJourneyStage('journeyIntent', 'waiting', 'Schema、时限与动作白名单');
+      setJourneyStage('journeyGuardrail', 'waiting', '遥测、目标与约束校验');
+      setJourneyStage('journeyModel', 'waiting', 'Intent IR → Action Proposal');
+      setJourneyStage('journeyTool', 'waiting', '工具名与参数必须真实产生');
+      setJourneyStage('journeyFunction', 'waiting', '模拟基站函数实际执行确认');
+    }
+
+    function updateControlDeadline(value) {
+      const deadlineMs = Number(value);
+      if (!Number.isFinite(deadlineMs) || deadlineMs <= 0) return;
+      currentControlDeadlineMs = deadlineMs;
+      $('slaLabel').textContent = deadlineMs.toLocaleString() + ' ms SLA';
+      quickSla.textContent = '/ ' + deadlineMs.toLocaleString() + ' ms SLA';
+      updateBudget(0, 'ready');
+    }
+
+    function resetObservability() {
+      resetJourney();
+      updateControlDeadline(1_000);
+      utilizationSeries = { cpu: [], gpu: [] };
+      renderUtilizationChart();
+      quickPhase.textContent = '等待任务 / Waiting';
+      runVerdict.dataset.state = 'waiting';
+      runVerdict.textContent = '运行后这里会直接说明：卡在意图解析、小模型推理、Tool Call，还是 Function ACK。';
+      ['quickModelTime', 'quickTokens', 'quickGpu', 'quickModelMemory', 'quickOutputRate',
+        'quickEffectiveTops', 'quickEffectiveBandwidth', 'quickQuantization'].forEach((id) => $(id).textContent = '—');
+    }
+
+    function appendUtilization(series, elapsedMs, value) {
+      const time = Number(elapsedMs);
+      const numeric = Number(value);
+      if (!Number.isFinite(time) || !Number.isFinite(numeric)) return;
+      utilizationSeries[series].push({ time, value: numeric });
+      renderUtilizationChart();
+    }
+
+    function renderUtilizationChart() {
+      const all = [...utilizationSeries.cpu, ...utilizationSeries.gpu];
+      const observedEnd = all.reduce((maximum, point) => Math.max(maximum, point.time), 0);
+      const windowMs = Math.max(currentControlDeadlineMs, observedEnd, 1);
+      const points = (items) => items.map((point) => {
+        const x = Math.max(0, Math.min(100, point.time / windowMs * 100));
+        const y = 100 - Math.max(0, Math.min(100, point.value));
+        return x.toFixed(2) + ',' + y.toFixed(2);
+      }).join(' ');
+      cpuChartLine.setAttribute('points', points(utilizationSeries.cpu));
+      gpuChartLine.setAttribute('points', points(utilizationSeries.gpu));
+      chartEmpty.hidden = all.length > 0;
+      chartWindow.textContent = '时间窗 / Window ' + formatMs(windowMs);
+    }
+
     function resetRun(message) {
       running = true;
       runButton.disabled = true;
       events.replaceChildren();
-      elapsed.textContent = '0 ms';
-      fill.style.width = '0%';
-      reserve.textContent = '剩余 / Reserve 1,000 ms';
+      updateControlDeadline(Number(message.deadlineMs) || 1_000);
+      updateBudget(0, 'starting');
       phase.textContent = message.intentMode + ' → ' + message.mode + ' · ' + message.scenario;
       terminal.textContent = 'RUNNING';
       action.textContent = '—';
@@ -750,7 +980,10 @@ export function renderLiveUi(): string {
           : '本次：规则基线，无模型推理\\nIntent IR → Action';
       liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
       liveLocalPeak = { gpu: 0, modelMemory: 0 };
+      utilizationSeries = { cpu: [], gpu: [] };
+      renderUtilizationChart();
       resourcePhase.textContent = '启动 / starting';
+      quickPhase.textContent = '启动 / starting';
       resourceCpu.textContent = '0%';
       resourceRss.textContent = '0 MiB';
       resourceHeap.textContent = '0 MiB';
@@ -781,6 +1014,8 @@ export function renderLiveUi(): string {
       liveResourcePeak.rss = Math.max(liveResourcePeak.rss, Number(sample.rssMiB) || 0);
       liveResourcePeak.heap = Math.max(liveResourcePeak.heap, Number(sample.heapUsedMiB) || 0);
       resourcePhase.textContent = String(sample.phase || '—').replaceAll('_', ' ');
+      quickPhase.textContent = String(sample.phase || '—').replaceAll('_', ' ');
+      appendUtilization('cpu', sample.elapsedMs, sample.processCpuPercent);
       resourceCpu.textContent = formatNumber(liveResourcePeak.cpu) + '%';
       resourceRss.textContent = formatNumber(liveResourcePeak.rss) + ' MiB';
       resourceHeap.textContent = formatNumber(liveResourcePeak.heap) + ' MiB';
@@ -792,11 +1027,23 @@ export function renderLiveUi(): string {
 
     function renderLocalResourceSample(sample) {
       if (!sample) return;
-      liveLocalPeak.gpu = Math.max(liveLocalPeak.gpu, Number(sample.gpuUtilizationPercent) || 0);
-      liveLocalPeak.modelMemory = Math.max(liveLocalPeak.modelMemory, Number(sample.modelGpuResidentMiB ?? sample.modelResidentMiB) || 0);
-      resourceGpu.textContent = formatNumber(liveLocalPeak.gpu) + '%';
-      resourceModelMemory.textContent = formatNumber(liveLocalPeak.modelMemory) + ' MiB';
-      if (sample.quantization) resourceQuantization.textContent = sample.quantization;
+      const gpu = Number(sample.gpuUtilizationPercent);
+      const modelMemory = Number(sample.modelGpuResidentMiB ?? sample.modelResidentMiB);
+      if (Number.isFinite(gpu)) {
+        liveLocalPeak.gpu = Math.max(liveLocalPeak.gpu, gpu);
+        resourceGpu.textContent = formatNumber(liveLocalPeak.gpu) + '%';
+        $('quickGpu').textContent = formatNumber(liveLocalPeak.gpu) + '%';
+      }
+      if (Number.isFinite(modelMemory)) {
+        liveLocalPeak.modelMemory = Math.max(liveLocalPeak.modelMemory, modelMemory);
+        resourceModelMemory.textContent = formatNumber(liveLocalPeak.modelMemory) + ' MiB';
+        $('quickModelMemory').textContent = formatNumber(liveLocalPeak.modelMemory) + ' MiB';
+      }
+      appendUtilization('gpu', sample.elapsedMs, sample.gpuUtilizationPercent);
+      if (sample.quantization) {
+        resourceQuantization.textContent = sample.quantization;
+        $('quickQuantization').textContent = sample.quantization;
+      }
     }
 
     function renderResourceSummary(summary) {
@@ -808,6 +1055,8 @@ export function renderLiveUi(): string {
       const usage = summary.tokenUsage;
       resourceTokens.textContent = usage ? usage.input + ' / ' + usage.output : 'N/A';
       resourceModelTime.textContent = usage?.modelDurationMs === undefined ? 'N/A' : formatMs(usage.modelDurationMs);
+      $('quickTokens').textContent = usage ? usage.input + ' / ' + usage.output : 'N/A';
+      $('quickModelTime').textContent = usage?.modelDurationMs === undefined ? 'N/A' : formatMs(usage.modelDurationMs);
       const local = summary.localModel;
       if (local) {
         resourceGpu.textContent = local.peakGpuUtilizationPercent === undefined ? 'N/A' : formatNumber(local.peakGpuUtilizationPercent) + '%';
@@ -818,6 +1067,14 @@ export function renderLiveUi(): string {
         resourceEffectiveTops.textContent = local.effectiveComputeTops === undefined ? 'N/A' : formatNumber(local.effectiveComputeTops) + ' TOPS';
         resourceEffectiveBandwidth.textContent = local.effectiveWeightBandwidthGBps === undefined ? 'N/A' : formatNumber(local.effectiveWeightBandwidthGBps) + ' GB/s';
         resourceQuantization.textContent = local.quantization || 'N/A';
+        $('quickGpu').textContent = local.peakGpuUtilizationPercent === undefined ? 'N/A' : formatNumber(local.peakGpuUtilizationPercent) + '%';
+        $('quickModelMemory').textContent = local.modelGpuResidentMiB === undefined && local.modelResidentMiB === undefined
+          ? 'N/A'
+          : formatNumber(local.modelGpuResidentMiB ?? local.modelResidentMiB) + ' MiB';
+        $('quickOutputRate').textContent = local.observedOutputTokensPerSecond === undefined ? 'N/A' : formatNumber(local.observedOutputTokensPerSecond) + ' tok/s';
+        $('quickEffectiveTops').textContent = local.effectiveComputeTops === undefined ? 'N/A' : formatNumber(local.effectiveComputeTops) + ' TOPS';
+        $('quickEffectiveBandwidth').textContent = local.effectiveWeightBandwidthGBps === undefined ? 'N/A' : formatNumber(local.effectiveWeightBandwidthGBps) + ' GB/s';
+        $('quickQuantization').textContent = local.quantization || 'N/A';
       }
       resourceScope.textContent = summary.modelServerMetrics === 'local_observed'
         ? 'Agent + Ollama + Mac GPU 实测'
@@ -841,6 +1098,10 @@ export function renderLiveUi(): string {
       $('capacityProfile').textContent = estimate.modelId + ' · ' + estimate.totalParametersB + 'B total · '
         + estimate.precision + ' · context ' + estimate.contextTokens + ' · output ' + estimate.targetOutputTokens
         + ' · budget ' + estimate.inferenceBudgetMs + ' ms · KV ' + formatNumber(estimate.kvCacheMiB) + ' MiB';
+      $('quickCapacityTops').textContent = '≥ ' + formatNumber(estimate.provisionalChipTops) + ' TOPS';
+      $('quickCapacityBandwidth').textContent = '≥ ' + formatNumber(estimate.provisionalMemoryBandwidthGBps) + ' GB/s';
+      $('quickCapacityRam').textContent = '≥ ' + formatNumber(estimate.provisionalDedicatedRamGiB) + ' GiB';
+      $('quickCapacityStorage').textContent = '≥ ' + formatNumber(estimate.provisionalStorageGiB) + ' GiB';
     }
 
     function formatNumber(value) {
@@ -920,12 +1181,85 @@ export function renderLiveUi(): string {
         }
       }
 
+      updateJourneyFromEvent(message, event, ms);
+
       if (event.type === 'MODEL_STARTED' || event.type === 'agent_start') setActive('nodeAgent');
       if (event.type === 'TOOL_DISPATCHED') {
         setActive('nodeDu');
         action.textContent = event.detail?.actionName || '—';
       }
       if (event.type === 'ACTION_ACK') version.textContent = String(event.detail?.configVersion ?? '—');
+    }
+
+    function updateJourneyFromEvent(message, event, ms) {
+      const detail = '+' + ms.toLocaleString() + ' ms';
+      if (message.stream === 'pi-agent') {
+        if (event.type === 'agent_start' || event.type === 'turn_start') {
+          setJourneyStage('journeyModel', 'running', 'Pi Agent 已启动本地模型推理 · ' + detail);
+          runVerdict.dataset.state = 'running';
+          runVerdict.textContent = '正在观察小模型：等待它生成完整 Tool Call，而不只是第一个 Token。';
+        }
+        if (event.type === 'tool_execution_start') {
+          setJourneyStage('journeyModel', 'done', '模型已完成 Action Proposal · ' + detail);
+          setJourneyStage('journeyTool', 'done', String(event.toolName || 'tool') + ' · ' + detail);
+          runVerdict.textContent = '小模型已经真实生成 Tool Call；下一步看 Guardrail 是否允许以及 Function 能否 ACK。';
+        }
+        return;
+      }
+
+      if (event.type === 'INTENT_RECEIVED') {
+        setJourneyStage('journeyGuardrail', 'running', 'Runtime 已接收 Intent · ' + detail);
+      }
+      if (event.type === 'SCHEMA_VALIDATED') {
+        setJourneyStage('journeyGuardrail', 'running', 'Schema 通过，正在核对遥测约束 · ' + detail);
+      }
+      if (event.type === 'SNAPSHOT_CAPTURED') {
+        setJourneyStage('journeyGuardrail', 'done', '遥测快照与约束通过 · ' + detail);
+      }
+      if (event.type === 'MODEL_STARTED') {
+        setJourneyStage('journeyGuardrail', 'done', '推理前安全检查通过 · ' + detail);
+        setJourneyStage('journeyModel', 'running', '推理预算 ' + formatMs(Number(event.detail?.budgetMs) || 0));
+        runVerdict.dataset.state = 'running';
+        runVerdict.textContent = '小模型正在运行：重点看模型耗时、GPU 曲线、模型驻留内存，以及是否在预算内生成 Tool Call。';
+      }
+      if (event.type === 'MODEL_COMPLETED') {
+        setJourneyStage('journeyModel', 'done', 'Action Proposal 已返回 · ' + detail);
+      }
+      if (event.type === 'PLAN_VALIDATED') {
+        setJourneyStage('journeyTool', 'done', String(event.detail?.actionName || 'proposal') + ' 已通过 Guardrail · ' + detail);
+      }
+      if (event.type === 'TOOL_DISPATCHED') {
+        setJourneyStage('journeyTool', 'done', String(event.detail?.actionName || 'tool') + ' · ' + detail);
+        setJourneyStage('journeyFunction', 'running', 'Station Function 已派发，等待 ACK');
+      }
+      if (event.type === 'ACTION_ACK') {
+        setJourneyStage('journeyFunction', 'done', 'ACTION_ACK · config v' + String(event.detail?.configVersion ?? '—') + ' · ' + detail);
+        runVerdict.dataset.state = 'succeeded';
+        runVerdict.textContent = '完整链路已走通：Intent → 本地小模型 → Tool Call → Station Function → ACTION_ACK。';
+      }
+      if (event.type === 'SAFE_NOOP' || event.type === 'REJECTED') {
+        const code = String(event.detail?.code || event.type);
+        if (!stationModelStarted) {
+          setJourneyStage('journeyGuardrail', 'failed', code + ' · ' + detail);
+          setJourneyStage('journeyModel', 'skipped', '安全检查未通过，因此没有调用小模型');
+          setJourneyStage('journeyTool', 'skipped', '没有模型输出');
+          setJourneyStage('journeyFunction', 'skipped', '没有执行 Function');
+          runVerdict.textContent = '任务在基站安全检查阶段停止；小模型和 Function 都没有被调用。请看 Guardrail 错误码。';
+        } else if (!stationToolCallReceived) {
+          setJourneyStage('journeyModel', 'failed', code + ' · 未在预算内生成 Tool Call');
+          setJourneyStage('journeyTool', 'skipped', 'NO_TOOL_CALL');
+          setJourneyStage('journeyFunction', 'skipped', '没有可执行的 Tool Call');
+          runVerdict.textContent = '瓶颈在本地小模型：推理已启动，但没有在时限内生成完整 Tool Call。';
+        } else if (event.type === 'REJECTED') {
+          setJourneyStage('journeyTool', 'failed', code + ' · Proposal 被 Guardrail 拒绝');
+          setJourneyStage('journeyFunction', 'skipped', 'Function 未执行');
+          runVerdict.textContent = '小模型生成了 Tool Call，但参数或动作没有通过确定性 Guardrail。';
+        } else {
+          setJourneyStage('journeyFunction', 'failed', code + ' · 未在控制时限内 ACK');
+          runVerdict.textContent = 'Tool Call 已产生，但 Function 没有在控制时限内返回 ACK。';
+        }
+        runVerdict.dataset.state = 'failed';
+      }
     }
 
     function renderPiCallStep(message) {
@@ -975,11 +1309,16 @@ export function renderLiveUi(): string {
     }
 
     function updateBudget(ms, eventType) {
-      const bounded = Math.min(1000, ms);
-      elapsed.textContent = bounded.toLocaleString() + ' ms';
-      fill.style.width = Math.min(100, bounded / 10) + '%';
-      reserve.textContent = '剩余 / Reserve ' + Math.max(0, 1000 - bounded).toLocaleString() + ' ms';
-      phase.textContent = eventType.replaceAll('_', ' ');
+      const actual = Math.max(0, Number(ms) || 0);
+      const bounded = Math.min(currentControlDeadlineMs, actual);
+      const progress = Math.min(100, bounded / currentControlDeadlineMs * 100);
+      elapsed.textContent = Math.round(actual).toLocaleString() + ' ms';
+      quickElapsed.textContent = Math.round(actual).toLocaleString() + ' ms';
+      fill.style.width = progress + '%';
+      quickBudgetFill.style.width = progress + '%';
+      reserve.textContent = '剩余 / Reserve ' + Math.max(0, currentControlDeadlineMs - actual).toLocaleString() + ' ms';
+      phase.textContent = String(eventType || '—').replaceAll('_', ' ');
+      quickPhase.textContent = String(eventType || '—').replaceAll('_', ' ');
     }
 
     function finishRun(message) {
@@ -994,6 +1333,10 @@ export function renderLiveUi(): string {
         toolResultState.textContent = message.result.status.toUpperCase();
         toolResultJson.textContent = formatStructuredValue(message.result);
       }
+      if (message.result.status === 'succeeded') {
+        runVerdict.dataset.state = 'succeeded';
+        runVerdict.textContent = '完整链路成功，并在 ' + formatMs(message.result.elapsedMs) + ' 内收到 ACTION_ACK。现在重点比较模型耗时、Token 速度、GPU 峰值和驻留内存。';
+      }
       setActive(null);
     }
 
@@ -1003,6 +1346,10 @@ export function renderLiveUi(): string {
       terminal.textContent = 'ERROR';
       toolResultState.textContent = 'ERROR';
       toolResultJson.textContent = formatStructuredValue({ error: message.error || 'Run failed' });
+      const activeJourney = document.querySelector('.journey-step[data-state="running"]');
+      if (activeJourney) setJourneyStage(activeJourney.id, 'failed', message.error || 'Run failed');
+      runVerdict.dataset.state = 'failed';
+      runVerdict.textContent = '调用链发生错误：' + (message.error || 'Run failed') + '。后续阶段没有执行。';
       setStatus('rejected', message.error || '运行失败 / Run failed');
       setActive(null);
     }
