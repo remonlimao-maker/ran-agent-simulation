@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  computeMaxInferenceMs,
   IntentParseError,
   parseNaturalLanguageIntent,
 } from "../src/intent-parser.ts";
@@ -52,6 +53,16 @@ test("maps the injected model-timeout scenario into the visible inference budget
 
   assert.equal(result.intent.execution.controlDeadlineMs, 1_000);
   assert.equal(result.intent.execution.maxInferenceMs, 120);
+});
+
+test("scales the inference budget with the requested experimental deadline", async () => {
+  const result = await parseNaturalLanguageIntent(SAMPLE.replace("1 秒", "5 秒"), {
+    now: () => FIXED_NOW,
+  });
+
+  assert.equal(result.intent.execution.controlDeadlineMs, 5_000);
+  assert.equal(result.intent.execution.maxInferenceMs, 4_800);
+  assert.equal(computeMaxInferenceMs(10_000), 9_000);
 });
 
 test("accepts an equivalent English operator intent", async () => {

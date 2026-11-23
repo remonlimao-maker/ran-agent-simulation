@@ -50,6 +50,7 @@ test("renders a self-contained live console with local SSE and run controls", ()
   assert.match(page, /id="resourceModelMemory"/);
   assert.match(page, /SAFE_NOOP/);
   assert.match(page, /NOT_INVOKED/);
+  assert.match(page, /NO_TOOL_CALL/);
   assert.match(page, /color-scheme: light/);
   assert.doesNotMatch(page, /color-scheme: dark|#071019|#0d202a/, "the live UI must remain light");
   assert.doesNotMatch(page, /(?:src|href)=["']https?:\/\//, "the live UI must not depend on remote assets");

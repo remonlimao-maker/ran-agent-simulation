@@ -55,6 +55,17 @@ export class IntentParseError extends Error {
   }
 }
 
+export function computeMaxInferenceMs(
+  controlDeadlineMs: number,
+  scenario?: IntentParserOptions["scenario"],
+): number {
+  const controlReserveMs = Math.max(1, Math.min(200, Math.floor(controlDeadlineMs * 0.2)));
+  return Math.min(
+    scenario === "model_timeout" ? 120 : 9_000,
+    Math.max(1, controlDeadlineMs - controlReserveMs),
+  );
+}
+
 export async function parseNaturalLanguageIntent(
   input: string,
   options: IntentParserOptions = {},
@@ -102,10 +113,7 @@ export async function parseNaturalLanguageIntent(
   });
 
   const controlDeadlineMs = extractDeadlineMs(naturalLanguage);
-  const maxInferenceMs = Math.min(
-    options.scenario === "model_timeout" ? 120 : 800,
-    Math.max(1, controlDeadlineMs - 50),
-  );
+  const maxInferenceMs = computeMaxInferenceMs(controlDeadlineMs, options.scenario);
   const execution: StationIntent["execution"] = {
     controlDeadlineMs,
     maxInferenceMs,

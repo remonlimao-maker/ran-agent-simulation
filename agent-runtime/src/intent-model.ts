@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import { validateIntent } from "./guardrail.ts";
-import { IntentParseError, type IntentParseStage } from "./intent-parser.ts";
+import { computeMaxInferenceMs, IntentParseError, type IntentParseStage } from "./intent-parser.ts";
 import type { RemoteModelConfig, Scenario } from "./live-server.ts";
 import type { StationIntent } from "./types.ts";
 
@@ -237,10 +237,7 @@ export async function parseNaturalLanguageIntentWithModel(
     allowedActions: semantics.allowedActions as StationIntent["allowedActions"],
     execution: {
       controlDeadlineMs: controlDeadlineMs as number,
-      maxInferenceMs: Math.min(
-        options.scenario === "model_timeout" ? 120 : 800,
-        Math.max(1, (controlDeadlineMs as number) - 50),
-      ),
+      maxInferenceMs: computeMaxInferenceMs(controlDeadlineMs as number, options.scenario),
       maxCells: Array.isArray((semantics.target as { cellIds?: unknown }).cellIds)
         ? (semantics.target as { cellIds: unknown[] }).cellIds.length
         : 0,

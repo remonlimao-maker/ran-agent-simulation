@@ -415,6 +415,7 @@ export function renderLiveUi(): string {
     };
     let piTraceSequence = 0;
     let stationModelStarted = false;
+    let stationToolCallReceived = false;
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
     let liveLocalPeak = { gpu: 0, modelMemory: 0 };
     const modelConfigs = {
@@ -630,6 +631,7 @@ export function renderLiveUi(): string {
       toolResultJson.textContent = '等待本地 Station Function 返回 ACTION_ACK… / Waiting for simulated function…';
       toolResultState.textContent = '等待调用 / Waiting';
       stationModelStarted = false;
+      stationToolCallReceived = false;
       setActive('nodeInput');
     }
 
@@ -720,6 +722,7 @@ export function renderLiveUi(): string {
       toolResultState.textContent = '等待调用 / Waiting';
       piTraceSequence = 0;
       stationModelStarted = false;
+      stationToolCallReceived = false;
       piTrace.replaceChildren();
       const traceWaiting = document.createElement('div');
       traceWaiting.className = 'intent-placeholder';
@@ -871,6 +874,7 @@ export function renderLiveUi(): string {
       }
 
       if (message.stream === 'pi-agent' && event.type === 'tool_execution_start') {
+        stationToolCallReceived = true;
         toolCallJson.textContent = formatStructuredValue({
           name: event.toolName,
           arguments: event.toolArguments,
@@ -878,6 +882,7 @@ export function renderLiveUi(): string {
         });
       }
       if (message.stream === 'runtime' && event.type === 'MODEL_COMPLETED' && modeSelect.value === 'rules') {
+        stationToolCallReceived = true;
         toolCallJson.textContent = formatStructuredValue({
           proposal: event.detail?.proposal,
           source: 'rules comparison; no model call'
@@ -904,6 +909,13 @@ export function renderLiveUi(): string {
             status: 'NOT_INVOKED',
             reason: '基站安全检查在推理前拒绝任务 / Station guardrail rejected before inference',
             guardrail: event.detail
+          });
+        } else if (!stationToolCallReceived) {
+          toolCallJson.textContent = formatStructuredValue({
+            status: 'NO_TOOL_CALL',
+            reason: '小模型已启动，但未在推理时限内生成 Tool Call / Model started but produced no tool call before its deadline',
+            terminal: event.type,
+            detail: event.detail
           });
         }
       }
