@@ -56,6 +56,7 @@ test("uses a remote management model tool call to build a validated Intent IR", 
   assert.equal(capturedAuthorization, "Bearer example-key-value");
   assert.equal(capturedBody.model, "Qwen/Qwen3-8B");
   assert.equal(capturedBody.tools[0].function.name, "emit_intent_semantics");
+  assert.equal("thinking" in capturedBody, false);
   assert.equal(result.parser.modelId, "Qwen/Qwen3-8B");
   assert.deepEqual(result.parser.usage, { inputTokens: 190, outputTokens: 74, totalTokens: 264 });
   assert.deepEqual(result.intent.target, { gnbId: "gnb-001", cellIds: ["cell-01"] });
@@ -68,6 +69,44 @@ test("uses a remote management model tool call to build a validated Intent IR", 
     "INTENT_IR_VALIDATED",
   ]);
   assert.doesNotMatch(JSON.stringify(result), /example-key-value/);
+});
+
+test("disables DeepSeek thinking mode when forcing the intent tool call", async () => {
+  let capturedBody: any;
+  const fetchFn: typeof fetch = async (_input, init) => {
+    capturedBody = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({
+      choices: [{
+        message: {
+          tool_calls: [{
+            function: {
+              name: "emit_intent_semantics",
+              arguments: JSON.stringify({
+                target: { gnbId: "gnb-001", cellIds: ["cell-01"] },
+                objective: { metric: "energy_consumption", direction: "decrease", target: 0.15 },
+                constraints: [{ metric: "dl_throughput_p95_mbps", op: ">=", value: 50 }],
+                allowedActions: ["set_energy_saving_mode"],
+                controlDeadlineMs: 1_000,
+              }),
+            },
+          }],
+        },
+      }],
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  await parseNaturalLanguageIntentWithModel(SAMPLE, {
+    baseUrl: "https://api.deepseek.com",
+    modelId: "deepseek-flash",
+    apiKey: "deepseek-test-key",
+    source: "session",
+  }, { now: () => FIXED_NOW, fetchFn });
+
+  assert.deepEqual(capturedBody.thinking, { type: "disabled" });
+  assert.deepEqual(capturedBody.tool_choice, {
+    type: "function",
+    function: { name: "emit_intent_semantics" },
+  });
 });
 
 test("rejects a management model response that emits more than one tool call", async () => {

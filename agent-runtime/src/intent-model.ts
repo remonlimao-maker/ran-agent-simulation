@@ -153,6 +153,7 @@ export async function parseNaturalLanguageIntentWithModel(
       },
       body: JSON.stringify({
         model: config.modelId,
+        ...(isDirectDeepSeekEndpoint(config.baseUrl) ? { thinking: { type: "disabled" } } : {}),
         messages: [
           {
             role: "system",
@@ -313,4 +314,13 @@ function requireRecord(value: unknown, path: string): Record<string, unknown> {
 
 function roundMs(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isDirectDeepSeekEndpoint(baseUrl: string): boolean {
+  try {
+    const hostname = new URL(baseUrl).hostname.toLowerCase();
+    return hostname === "api.deepseek.com" || hostname.endsWith(".deepseek.com");
+  } catch {
+    return false;
+  }
 }
