@@ -44,6 +44,29 @@ interface IntentSemantics {
   controlDeadlineMs: unknown;
 }
 
+interface MetricNormalization {
+  path: string;
+  from: string;
+  to: string;
+}
+
+const CANONICAL_METRICS = [
+  "energy_consumption",
+  "dl_throughput_p95_mbps",
+  "rrc_setup_success_rate",
+] as const;
+
+const METRIC_ALIASES: Readonly<Record<string, typeof CANONICAL_METRICS[number]>> = {
+  energy_consumption: "energy_consumption",
+  dl_throughput_p95_mbps: "dl_throughput_p95_mbps",
+  dl_p95_throughput_mbps: "dl_throughput_p95_mbps",
+  downlink_throughput_p95_mbps: "dl_throughput_p95_mbps",
+  downlink_p95_throughput_mbps: "dl_throughput_p95_mbps",
+  p95_dl_throughput_mbps: "dl_throughput_p95_mbps",
+  rrc_setup_success_rate: "rrc_setup_success_rate",
+  rrc_connection_setup_success_rate: "rrc_setup_success_rate",
+};
+
 const INTENT_TOOL = {
   type: "function",
   function: {
@@ -66,7 +89,11 @@ const INTENT_TOOL = {
           type: "object",
           additionalProperties: false,
           properties: {
-            metric: { type: "string" },
+            metric: {
+              type: "string",
+              enum: CANONICAL_METRICS,
+              description: "Use one canonical metric identifier exactly as listed.",
+            },
             direction: { type: "string", enum: ["increase", "decrease", "maintain"] },
             target: { type: "number" },
           },
@@ -78,7 +105,11 @@ const INTENT_TOOL = {
             type: "object",
             additionalProperties: false,
             properties: {
-              metric: { type: "string" },
+              metric: {
+                type: "string",
+                enum: CANONICAL_METRICS,
+                description: "Use one canonical metric identifier exactly as listed.",
+              },
               op: { type: "string", enum: [">=", "<=", "=="] },
               value: { type: "number" },
             },
@@ -182,13 +213,15 @@ export async function parseNaturalLanguageIntentWithModel(
   }
 
   const usage = parseUsage(responseBody);
-  const semantics = extractSemantics(responseBody);
+  const extracted = extractSemantics(responseBody);
+  const semantics = extracted.semantics;
   await emit("INTENT_MODEL_TOOL_CALL", "大模型输出结构化语义 / Model emitted structured semantics", {
     modelId: config.modelId,
     modelDurationMs,
     usage,
     toolName: INTENT_TOOL.function.name,
     arguments: semantics,
+    metricNormalizations: extracted.metricNormalizations,
   });
 
   const controlDeadlineMs = semantics.controlDeadlineMs;
@@ -240,7 +273,10 @@ export async function parseNaturalLanguageIntentWithModel(
   };
 }
 
-function extractSemantics(body: unknown): IntentSemantics {
+function extractSemantics(body: unknown): {
+  semantics: IntentSemantics;
+  metricNormalizations: MetricNormalization[];
+} {
   const root = requireRecord(body, "provider response");
   if (!Array.isArray(root.choices) || root.choices.length !== 1) {
     throw new IntentParseError("INTENT_MODEL_INVALID_RESPONSE", "provider must return exactly one choice");
@@ -256,13 +292,45 @@ function extractSemantics(body: unknown): IntentSemantics {
     throw new IntentParseError("INTENT_MODEL_INVALID_RESPONSE", `unexpected intent tool: ${String(fn.name)}`);
   }
   const args = typeof fn.arguments === "string" ? parseArguments(fn.arguments) : requireRecord(fn.arguments, "tool arguments");
-  return {
+  return normalizeIntentMetrics({
     target: args.target,
     objective: args.objective,
     constraints: args.constraints,
     allowedActions: args.allowedActions,
     controlDeadlineMs: args.controlDeadlineMs,
+  });
+}
+
+function normalizeIntentMetrics(semantics: IntentSemantics): {
+  semantics: IntentSemantics;
+  metricNormalizations: MetricNormalization[];
+} {
+  const metricNormalizations: MetricNormalization[] = [];
+  const normalizeField = (value: unknown, path: string): unknown => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    if (typeof record.metric !== "string") return value;
+    const canonical = canonicalMetricName(record.metric);
+    if (canonical === record.metric) return value;
+    metricNormalizations.push({ path: `${path}.metric`, from: record.metric, to: canonical });
+    return { ...record, metric: canonical };
   };
+
+  return {
+    semantics: {
+      ...semantics,
+      objective: normalizeField(semantics.objective, "objective"),
+      constraints: Array.isArray(semantics.constraints)
+        ? semantics.constraints.map((constraint, index) => normalizeField(constraint, `constraints[${index}]`))
+        : semantics.constraints,
+    },
+    metricNormalizations,
+  };
+}
+
+function canonicalMetricName(metric: string): string {
+  const normalized = metric.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return METRIC_ALIASES[normalized] ?? metric;
 }
 
 function parseArguments(value: string): Record<string, unknown> {

@@ -414,6 +414,7 @@ export function renderLiveUi(): string {
       }
     };
     let piTraceSequence = 0;
+    let stationModelStarted = false;
     let liveResourcePeak = { cpu: 0, rss: 0, heap: 0 };
     let liveLocalPeak = { gpu: 0, modelMemory: 0 };
     const modelConfigs = {
@@ -628,6 +629,7 @@ export function renderLiveUi(): string {
       toolCallJson.textContent = '等待基站小模型通过 Pi Agent 生成工具调用… / Waiting for Pi tool call…';
       toolResultJson.textContent = '等待本地 Station Function 返回 ACTION_ACK… / Waiting for simulated function…';
       toolResultState.textContent = '等待调用 / Waiting';
+      stationModelStarted = false;
       setActive('nodeInput');
     }
 
@@ -717,6 +719,7 @@ export function renderLiveUi(): string {
       toolResultJson.textContent = '尚未调用模拟工具 / Function not called yet';
       toolResultState.textContent = '等待调用 / Waiting';
       piTraceSequence = 0;
+      stationModelStarted = false;
       piTrace.replaceChildren();
       const traceWaiting = document.createElement('div');
       traceWaiting.className = 'intent-placeholder';
@@ -863,6 +866,10 @@ export function renderLiveUi(): string {
       events.scrollTop = events.scrollHeight;
       renderPiCallStep(message);
 
+      if (message.stream === 'runtime' && event.type === 'MODEL_STARTED') {
+        stationModelStarted = true;
+      }
+
       if (message.stream === 'pi-agent' && event.type === 'tool_execution_start') {
         toolCallJson.textContent = formatStructuredValue({
           name: event.toolName,
@@ -892,6 +899,13 @@ export function renderLiveUi(): string {
       if (message.stream === 'runtime' && (event.type === 'SAFE_NOOP' || event.type === 'REJECTED')) {
         toolResultState.textContent = event.type;
         toolResultJson.textContent = formatStructuredValue({ status: event.type, result: event.detail });
+        if (!stationModelStarted) {
+          toolCallJson.textContent = formatStructuredValue({
+            status: 'NOT_INVOKED',
+            reason: '基站安全检查在推理前拒绝任务 / Station guardrail rejected before inference',
+            guardrail: event.detail
+          });
+        }
       }
 
       if (event.type === 'MODEL_STARTED' || event.type === 'agent_start') setActive('nodeAgent');
