@@ -195,6 +195,7 @@ T_effect 单独报告，避免用“快速 ACK”掩盖真实网络效果尚未�
 
 ## 文档与目录
 
+- [技术规范（SPEC）](SPEC.md)：系统契约、时限、安全语义和验收条件。
 - [Agent Runtime](agent-runtime/README.md)：运行方式、本地模型接口和生产差距。
 - [实验设计](docs/EXPERIMENT_PLAN.md)：研究假设、因子矩阵、指标与门槛。
 - [开源项目参考](docs/REFERENCE_PROJECTS.md)：可借鉴项目、可复用部分与差距。
